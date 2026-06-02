@@ -1,0 +1,33 @@
+# 환경변수 / 시크릿
+.env
+*.env
+google-services.json
+GoogleService-Info.plist
+firebase_service_account.json
+
+# Android 서명 키 (절대 커밋 금지)
+flutter_app/android/key.properties
+flutter_app/android/app/*.keystore
+flutter_app/android/app/*.jks
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# Flutter / Dart
+flutter_app/build/
+flutter_app/.dart_tool/
+flutter_app/.flutter-plugins
+flutter_app/.flutter-plugins-dependencies
+flutter_app/*.iml
+
+# macOS
+.DS_Store
+
+# IDE
+.idea/
+.vscode/
+*.swp

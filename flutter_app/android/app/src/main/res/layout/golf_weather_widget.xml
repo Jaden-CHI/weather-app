@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="12dp"
+    android:background="#0D1B2A">
+
+    <!-- 상단: D-Day + 코스명 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:id="@+id/tv_dday"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="D-3"
+            android:textColor="#FFFFFF"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:background="#2E7D6B"
+            android:paddingHorizontal="8dp"
+            android:paddingVertical="3dp"/>
+
+        <View
+            android:id="@+id/status_dot"
+            android:layout_width="8dp"
+            android:layout_height="8dp"
+            android:layout_marginHorizontal="8dp"
+            android:background="#4CAF50"/>
+
+        <TextView
+            android:id="@+id/tv_course_name"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="용인 컨트리클럽"
+            android:textColor="#FFFFFF"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:ellipsize="end"
+            android:singleLine="true"/>
+    </LinearLayout>
+
+    <!-- AI 권고 메시지 -->
+    <TextView
+        android:id="@+id/tv_status_message"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="라운딩 최적 날씨입니다"
+        android:textColor="#B0BEC5"
+        android:textSize="12sp"/>
+
+    <!-- 날씨 수치 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="8dp">
+
+        <TextView
+            android:id="@+id/tv_temp"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="18~24°C"
+            android:textColor="#ECEFF1"
+            android:textSize="12sp"/>
+
+        <TextView
+            android:id="@+id/tv_rain"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="🌧 20%"
+            android:textColor="#90CAF9"
+            android:textSize="12sp"/>
+
+        <TextView
+            android:id="@+id/tv_wind"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="💨 3.2m/s"
+            android:textColor="#B0BEC5"
+            android:textSize="12sp"/>
+    </LinearLayout>
+
+    <!-- 취소 안내 -->
+    <TextView
+        android:id="@+id/tv_cancel"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:text="무료 취소 가능 — 23시간 남음"
+        android:textColor="#A5D6A7"
+        android:textSize="11sp"/>
+
+</LinearLayout>

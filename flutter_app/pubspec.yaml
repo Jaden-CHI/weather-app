@@ -1,0 +1,68 @@
+name: weather_app
+description: 켜자마자 날씨 — 골프·낚시 특화 액티비티 날씨 가드
+publish_to: none
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.3.0 <4.0.0"
+  flutter: ">=3.19.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # ── 네트워크 ──────────────────────────────────
+  dio: ^5.4.3
+  cached_network_image: ^3.3.1
+
+  # ── 상태 관리 ────────────────────────────────
+  flutter_riverpod: ^2.5.1
+  riverpod_annotation: ^2.3.5
+
+  # ── 잠금화면/홈화면 위젯 브릿지 ──────────────
+  home_widget: ^0.6.0
+
+  # ── 백그라운드 작업 ──────────────────────────
+  workmanager: ^0.9.0
+
+  # ── 권한 요청 ────────────────────────────────
+  permission_handler: ^11.3.1
+
+  # ── 로컬 저장 ────────────────────────────────
+  shared_preferences: ^2.2.3
+  uuid: ^4.4.0
+
+  # ── 위치 ─────────────────────────────────────
+  geolocator: ^11.0.0
+
+  # ── 지도 ─────────────────────────────────────
+  google_maps_flutter: ^2.10.0
+
+  # ── Firebase ──────────────────────────────────
+  firebase_core: ^2.24.0
+  firebase_messaging: ^14.7.0
+  firebase_database: ^10.4.0
+  firebase_auth: ^4.15.0
+  flutter_local_notifications: ^17.2.3
+
+  # ── 공유 ─────────────────────────────────────
+  share_plus: ^10.0.2
+  url_launcher: ^6.3.0
+
+  # ── UI ───────────────────────────────────────
+  intl: ^0.19.0
+  shimmer: ^3.0.0
+  lottie: ^3.1.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+  build_runner: ^2.4.9
+  riverpod_generator: ^2.4.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/lottie/
+    - assets/images/
