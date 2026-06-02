@@ -52,10 +52,6 @@ final golfEventsProvider = FutureProvider<List<GolfEvent>>((ref) async {
   return AppScheduleService().getUpcomingGolfSchedules();
 });
 
-final fishingEventsProvider = FutureProvider<List<FishingEvent>>((ref) async {
-  return AppScheduleService().getUpcomingFishingSchedules();
-});
-
 // ═══════════════════════════════════════════════════════════════
 // 홈 화면
 // ═══════════════════════════════════════════════════════════════
@@ -66,7 +62,6 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
-  int _tab    = 0; // 0=골프, 1=낚시
   int _navIdx = 0; // 하단 탭
 
   @override
@@ -87,17 +82,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   _Header(
                     onRefreshTap: () {
                       ref.invalidate(golfEventsProvider);
-                      ref.invalidate(fishingEventsProvider);
                     },
                   ),
-                  _SegmentControl(
-                    active: _tab,
-                    onChanged: (v) => setState(() => _tab = v),
-                  ),
                   Expanded(
-                    child: _tab == 0
-                        ? _GolfTab(ref: ref)
-                        : _FishingTab(ref: ref),
+                    child: _GolfTab(ref: ref),
                   ),
                 ],
               )

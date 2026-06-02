@@ -173,15 +173,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             notifyBeforeHours: 24,
                             weatherAlertEnabled: true,
                           );
-                          await AppScheduleService().addFishingSchedule(
-                            title: '테스트 출조',
-                            location: '남춘CC',
-                            lat: 37.2808,
-                            lng: 127.0095,
-                            startAt: DateTime.now().add(const Duration(days: 5)),
-                            notifyBeforeHours: 24,
-                            weatherAlertEnabled: true,
-                          );
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(content: Text('테스트 일정이 추가되었습니다!')),

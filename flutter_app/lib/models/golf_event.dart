@@ -48,39 +48,3 @@ class GolfEvent {
         courseName: courseName ?? this.courseName,
       );
 }
-
-/// 캘린더에서 파싱된 낚시 일정
-class FishingEvent {
-  final String id;
-  final String title;
-  final DateTime startDate;
-  final String? location;
-  final String? spotId; // 백엔드 출항지 ID
-
-  const FishingEvent({
-    required this.id,
-    required this.title,
-    required this.startDate,
-    this.location,
-    this.spotId,
-  });
-
-  int get dday {
-    final today = DateTime.now();
-    return startDate.difference(DateTime(today.year, today.month, today.day)).inDays;
-  }
-
-  String get ddayLabel {
-    final d = dday;
-    if (d == 0) return 'D-Day';
-    if (d > 0) return 'D-$d';
-    return 'D+${d.abs()}';
-  }
-
-  String get formattedDate {
-    final weekdays = ['월', '화', '수', '목', '금', '토', '일'];
-    final wd = weekdays[startDate.weekday - 1];
-    return '${startDate.month}월 ${startDate.day}일($wd)';
-  }
-  String get formattedTime => DateFormat('HH:mm').format(startDate);
-}

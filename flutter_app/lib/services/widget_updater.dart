@@ -43,31 +43,6 @@ class WidgetUpdater {
     await _triggerUpdate();
   }
 
-  /// 배낚시 일정 + 해양 날씨를 위젯에 반영
-  static Future<void> updateMarineWidget({
-    required FishingEvent event,
-    required MarineWeatherData weather,
-  }) async {
-    final rec = weather.aiRecommendation;
-    final warning = weather.warning;
-
-    await Future.wait([
-      HomeWidget.saveWidgetData('dday_label', event.ddayLabel),
-      HomeWidget.saveWidgetData('course_name', weather.spotName),
-      HomeWidget.saveWidgetData('forecast_date', '낚시 출조'),
-      HomeWidget.saveWidgetData('status', rec.status),
-      HomeWidget.saveWidgetData('status_message', rec.message),
-      HomeWidget.saveWidgetData('wave_height', '${weather.current.waveHeight}m'),
-      HomeWidget.saveWidgetData('wind_speed', '${weather.current.windSpeed}m/s'),
-      HomeWidget.saveWidgetData('golden_time', weather.goldenTime),
-      HomeWidget.saveWidgetData('departure_blocked', warning.departureBlocked.toString()),
-      HomeWidget.saveWidgetData('warning_level', warning.level),
-      HomeWidget.saveWidgetData('last_updated', DateTime.now().toIso8601String()),
-    ]);
-
-    await _triggerUpdate();
-  }
-
   /// 데이터 없을 때 위젯 초기화 상태 표시
   static Future<void> showNoEventWidget() async {
     await Future.wait([

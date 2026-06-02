@@ -41,27 +41,7 @@ void backgroundDispatcher() {
         }
       }
 
-      // 2. 골프 일정 없으면 낚시 일정 확인
-      final fishingEvents = await scheduleService.getUpcomingFishingSchedules();
-      if (fishingEvents.isNotEmpty) {
-        final event = fishingEvents.first;
-        String? spotId = event.spotId;
-        if (spotId == null && event.location != null) {
-          spotId = await apiService.searchSpotId(event.location!);
-        }
-        if (spotId != null) {
-          final weather = await apiService.getMarineWeather(spotId);
-          if (weather != null) {
-            await WidgetUpdater.updateMarineWidget(
-              event: event,
-              weather: weather,
-            );
-            return Future.value(true);
-          }
-        }
-      }
-
-      // 3. 둘 다 없으면 위젯 빈 상태
+      // 2. 골프 일정 없으면 위젯 빈 상태
       await WidgetUpdater.showNoEventWidget();
       return Future.value(true);
     } catch (e) {
