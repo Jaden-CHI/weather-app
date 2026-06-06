@@ -9,7 +9,18 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+asyncpg://weather:changeme@db:5432/weatherapp")
+def _normalize_database_url(url: str) -> str:
+    """Railway/Render commonly expose postgresql:// URLs; SQLAlchemy async needs asyncpg."""
+    if url.startswith("postgres://"):
+        return url.replace("postgres://", "postgresql+asyncpg://", 1)
+    if url.startswith("postgresql://"):
+        return url.replace("postgresql://", "postgresql+asyncpg://", 1)
+    return url
+
+
+DATABASE_URL = _normalize_database_url(
+    os.getenv("DATABASE_URL", "postgresql+asyncpg://weather:changeme@db:5432/weatherapp")
+)
 
 engine = create_async_engine(DATABASE_URL, echo=False, pool_pre_ping=True)
 AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
@@ -18,6 +29,15 @@ AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=F
 async def get_db() -> AsyncSession:
     async with AsyncSessionLocal() as session:
         yield session
+
+
+async def init_schema(session: AsyncSession) -> None:
+    schema_path = os.path.join(os.path.dirname(__file__), "..", "schema.sql")
+    with open(schema_path, encoding="utf-8") as f:
+        statements = [s.strip() for s in f.read().split(";") if s.strip()]
+    for statement in statements:
+        await session.execute(text(statement))
+    await session.commit()
 
 
 # ── 골프장 조회 ───────────────────────────────────────────────────

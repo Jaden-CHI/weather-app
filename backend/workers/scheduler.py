@@ -6,6 +6,13 @@ import os
 from .weather_collector import run_golf_collection
 from .marine_collector import run_marine_collection
 from .notification_worker import run_notification_check
+from models.database import AsyncSessionLocal, init_schema, seed_data
+
+
+async def ensure_database_ready() -> None:
+    async with AsyncSessionLocal() as session:
+        await init_schema(session)
+        await seed_data(session)
 
 
 async def run_once() -> None:
@@ -19,6 +26,7 @@ async def run_once() -> None:
 
 async def main() -> None:
     interval = int(os.getenv("WORKER_INTERVAL_MINUTES", "60")) * 60
+    await ensure_database_ready()
     while True:
         await run_once()
         print(f"[스케줄러] {interval // 60}분 후 재실행 대기")

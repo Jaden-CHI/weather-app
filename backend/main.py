@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from api.routers import golf, marine, devices, admin
-from models.database import AsyncSessionLocal, seed_data
+from models.database import AsyncSessionLocal, init_schema, seed_data
 
 # CORS_ORIGINS 가 설정되면 그 목록만 허용, 없으면 개발용 와일드카드
 _cors_raw = os.getenv("CORS_ORIGINS", "")
@@ -17,6 +17,7 @@ _cors_origins = [o.strip() for o in _cors_raw.split(",") if o.strip()] or ["*"]
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     async with AsyncSessionLocal() as session:
+        await init_schema(session)
         await seed_data(session)
     yield
 
