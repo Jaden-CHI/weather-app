@@ -1,7 +1,7 @@
 name: weather_app
 description: Golf Windy - 골프장 날씨 가이드
 publish_to: none
-version: 1.0.0+1
+version: 1.0.4+9
 
 environment:
   sdk: ">=3.3.0 <4.0.0"
@@ -13,6 +13,7 @@ dependencies:
 
   # ── 네트워크 ──────────────────────────────────
   dio: ^5.4.3
+  http: ^1.2.2
   cached_network_image: ^3.3.1
 
   # ── 상태 관리 ────────────────────────────────
@@ -36,7 +37,7 @@ dependencies:
   geolocator: ^11.0.0
 
   # ── 지도 ─────────────────────────────────────
-  google_maps_flutter: ^2.10.0
+  webview_flutter: ^4.4.2
 
   # ── Firebase ──────────────────────────────────
   firebase_core: ^2.24.0

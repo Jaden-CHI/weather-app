@@ -1,44 +1,215 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../config/app_config.dart';
 import '../models/weather_data.dart';
+
+class CourseSearchResult {
+  final String courseId;
+  final String name;
+  final String? nameShort;
+  final double? lat;
+  final double? lng;
+
+  const CourseSearchResult({
+    required this.courseId,
+    required this.name,
+    this.nameShort,
+    this.lat,
+    this.lng,
+  });
+
+  factory CourseSearchResult.fromJson(Map<String, dynamic> json) {
+    return CourseSearchResult(
+      courseId: json['course_id'] as String,
+      name: json['name'] as String? ?? '',
+      nameShort: json['name_short'] as String?,
+      lat: _asDouble(json['lat']),
+      lng: _asDouble(json['lon'] ?? json['lng']),
+    );
+  }
+
+  static double? _asDouble(dynamic value) {
+    if (value is num) return value.toDouble();
+    if (value is String) return double.tryParse(value);
+    return null;
+  }
+}
+
+class LocationSearchResult {
+  final double lat;
+  final double lng;
+
+  const LocationSearchResult({required this.lat, required this.lng});
+}
 
 /// 백엔드 FastAPI 서버와 통신하는 서비스
 class WeatherApiService {
   WeatherApiService._();
   static final instance = WeatherApiService._();
 
-  // 개발: localhost, 운영: 실제 서버 URL로 교체
-  static const _baseUrl = String.fromEnvironment(
-    'API_BASE_URL',
-    defaultValue: 'http://localhost:8000',
-  );
+  static const Map<String, String> _fallbackCourseIds = {
+    '레이크사이드CC': 'CC_025',
+    '올림픽': 'CC_014',
+    '올림픽CC': 'CC_014',
+    '올림픽골프장': 'CC_014',
+    '올림픽 골프장': 'CC_014',
+    '남서울': 'CC_042',
+    '남서울CC': 'CC_042',
+    '남서울컨트리클럽': 'CC_042',
+  };
 
-  late final _dio = Dio(
-    BaseOptions(
-      baseUrl: _baseUrl,
-      connectTimeout: const Duration(seconds: 5),
-      receiveTimeout: const Duration(seconds: 10),
-      headers: {'Content-Type': 'application/json'},
-    ),
-  )..interceptors.add(_CacheInterceptor());
+  Dio get _dio => Dio(
+        BaseOptions(
+          baseUrl: AppConfig.apiBaseUrl,
+          connectTimeout: const Duration(seconds: 8),
+          receiveTimeout: const Duration(seconds: 12),
+          headers: {'Content-Type': 'application/json'},
+        ),
+      )..interceptors.add(_CacheInterceptor());
 
   /// 골프장 이름 검색 → course_id 반환
   Future<String?> searchCourseId(String keyword) async {
+    final course = await searchCourse(keyword);
+    if (course != null) return course.courseId;
+
+    final fallbackId = _fallbackCourseIds[_canonicalCourseKeyword(keyword)];
+    if (fallbackId != null) {
+      debugPrint('✅ courseId fallback matched: $keyword → $fallbackId');
+      return fallbackId;
+    }
+
+    debugPrint('⚠️ courseId not found for: $keyword');
+    return null;
+  }
+
+  /// 골프장 이름 검색 → 백엔드 검색 결과 반환
+  Future<CourseSearchResult?> searchCourse(String keyword) async {
+    final candidates = _courseSearchCandidates(keyword);
+    if (candidates.isEmpty) return null;
+
+    for (final q in candidates) {
+      try {
+        final resp = await _dio.get(
+          '/api/v1/golf/courses/search',
+          queryParameters: {'q': q},
+        );
+        final results = (resp.data['results'] as List<dynamic>? ?? [])
+            .whereType<Map>()
+            .map((e) => CourseSearchResult.fromJson(
+                  Map<String, dynamic>.from(e),
+                ))
+            .toList();
+        if (results.isEmpty) continue;
+
+        final best = _bestCourseMatch(keyword, results);
+        debugPrint('✅ courseId matched: $keyword → ${best.courseId}');
+        return best;
+      } on DioException catch (e) {
+        if (e.response?.statusCode == 404) continue;
+        debugPrint('⚠️ course search failed for "$q": ${e.message}');
+        break;
+      } catch (e) {
+        debugPrint('⚠️ course search failed for "$q": $e');
+        break;
+      }
+    }
+
+    return null;
+  }
+
+  Future<LocationSearchResult?> geocodeLocation(String query) async {
+    final trimmed = query.trim();
+    if (trimmed.isEmpty) return null;
+
     try {
-      final resp = await _dio.get(
-        '/api/v1/golf/courses/search',
-        queryParameters: {'q': keyword},
+      final dio = Dio(
+        BaseOptions(
+          baseUrl: 'https://nominatim.openstreetmap.org',
+          connectTimeout: const Duration(seconds: 6),
+          receiveTimeout: const Duration(seconds: 8),
+          headers: {
+            'User-Agent': 'GolfWindy/1.0 contact:appstore',
+          },
+        ),
       );
-      final results = resp.data['results'] as List<dynamic>;
+      final resp = await dio.get(
+        '/search',
+        queryParameters: {
+          'q': trimmed,
+          'format': 'json',
+          'limit': '1',
+        },
+      );
+      final results = resp.data as List<dynamic>? ?? [];
       if (results.isEmpty) return null;
-      return results.first['course_id'] as String?;
-    } catch (_) {
+      final first = Map<String, dynamic>.from(results.first as Map);
+      final lat = double.tryParse(first['lat']?.toString() ?? '');
+      final lng = double.tryParse(first['lon']?.toString() ?? '');
+      if (lat == null || lng == null) return null;
+      return LocationSearchResult(lat: lat, lng: lng);
+    } catch (e) {
+      debugPrint('⚠️ location geocode failed for "$trimmed": $e');
       return null;
     }
   }
 
+  static List<String> _courseSearchCandidates(String keyword) {
+    final trimmed = keyword.trim();
+    if (trimmed.isEmpty) return const [];
+
+    final withoutRoundText =
+        trimmed.replaceAll(RegExp(r'라운딩|라운드|골프\s*일정'), '').trim();
+    final noSpaces = withoutRoundText.replaceAll(RegExp(r'\s+'), '');
+    final withoutSuffix = noSpaces
+        .replaceAll(
+          RegExp(
+            r'(컨트리클럽|골프클럽|골프장|CC|C\.C|GC|G\.C)$',
+            caseSensitive: false,
+          ),
+          '',
+        )
+        .trim();
+
+    final candidates = <String>[];
+    for (final value in [trimmed, withoutRoundText, noSpaces, withoutSuffix]) {
+      if (value.isNotEmpty && !candidates.contains(value)) {
+        candidates.add(value);
+      }
+    }
+    return candidates;
+  }
+
+  static CourseSearchResult _bestCourseMatch(
+    String keyword,
+    List<CourseSearchResult> results,
+  ) {
+    final needle = _canonicalCourseKeyword(keyword);
+
+    int score(CourseSearchResult course) {
+      final name = _canonicalCourseKeyword(course.name);
+      final shortName = _canonicalCourseKeyword(course.nameShort ?? '');
+      if (name == needle || shortName == needle) return 0;
+      if (name.startsWith(needle) || shortName.startsWith(needle)) return 1;
+      if (name.contains(needle) || shortName.contains(needle)) return 2;
+      return 3;
+    }
+
+    results.sort((a, b) => score(a).compareTo(score(b)));
+    return results.first;
+  }
+
+  static String _canonicalCourseKeyword(String value) {
+    return value
+        .trim()
+        .replaceAll(RegExp(r'\s+'), '')
+        .replaceAll(RegExp(r'[.\-_/·()]'), '')
+        .toUpperCase();
+  }
+
   /// 골프장 날씨 + 취소 권고 조회
-  Future<GolfWeatherData?> getGolfWeather(String courseId, {int dday = 0}) async {
+  Future<GolfWeatherData?> getGolfWeather(String courseId,
+      {int dday = 0}) async {
     try {
       final resp = await _dio.get(
         '/api/v1/golf/courses/$courseId/weather',
@@ -112,7 +283,8 @@ class WeatherApiService {
         'user_token': userToken,
         'activity_type': activityType,
         'target_id': targetId,
-        'event_date': '${eventDate.year}-${eventDate.month.toString().padLeft(2,'0')}-${eventDate.day.toString().padLeft(2,'0')}',
+        'event_date':
+            '${eventDate.year}-${eventDate.month.toString().padLeft(2, '0')}-${eventDate.day.toString().padLeft(2, '0')}',
         'event_title': eventTitle,
         'rain_threshold': rainThreshold,
         'wind_threshold': windThreshold,
@@ -165,7 +337,9 @@ class _CacheInterceptor extends Interceptor {
             requestOptions: err.requestOptions,
             data: cached,
             statusCode: 200,
-            headers: Headers.fromMap({'X-From-Cache': ['true']}),
+            headers: Headers.fromMap({
+              'X-From-Cache': ['true']
+            }),
           ),
         );
         return;
