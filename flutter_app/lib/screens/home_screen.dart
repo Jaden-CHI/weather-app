@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import '../config/app_config.dart';
@@ -1292,7 +1294,14 @@ class _MapScreenState extends ConsumerState<_MapScreen> {
                     )
                   : Stack(
                       children: [
-                        WebViewWidget(controller: webViewController),
+                        WebViewWidget(
+                          controller: webViewController,
+                          gestureRecognizers: {
+                            Factory<OneSequenceGestureRecognizer>(
+                              () => EagerGestureRecognizer(),
+                            ),
+                          },
+                        ),
                         if (_isMapLoading)
                           const Center(
                             child: CircularProgressIndicator(color: _T.brand),
