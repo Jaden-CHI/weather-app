@@ -45,7 +45,7 @@ class AppConfig {
     required double lat,
     required double lng,
     required String label,
-    int zoom = 12,
+    int zoom = 13,
   }) {
     final base = apiBaseUrl.replaceAll(RegExp(r'/+$'), '');
     return Uri.parse('$base/map/windy').replace(queryParameters: {

@@ -67,7 +67,7 @@ async def root():
 async def windy_map(
     lat: float = Query(...),
     lng: float = Query(...),
-    zoom: int = Query(12, ge=3, le=18),
+    zoom: int = Query(13, ge=3, le=18),
     label: str = Query("골프장 위치"),
 ):
     """Windy 지도 WebView용 HTML.
@@ -76,10 +76,12 @@ async def windy_map(
     Railway 도메인에서 HTML을 제공하도록 둔다.
     """
     api_key = os.getenv("WINDY_API_KEY", "").strip()
-    safe_label = json.dumps(label[:80])
+    marker_label = (label or "골프장 위치")[:80]
+    safe_label = json.dumps(marker_label)
+    safe_caption = json.dumps(f"{marker_label} 위치 기준 바람 예보")
 
     if not api_key:
-        return HTMLResponse(_leaflet_map_html(lat, lng, zoom, safe_label))
+        return HTMLResponse(_leaflet_map_html(lat, lng, zoom, safe_label, safe_caption))
 
     safe_key = json.dumps(api_key)
     return HTMLResponse(f"""
@@ -93,10 +95,59 @@ async def windy_map(
   <style>
     * {{ margin: 0; padding: 0; box-sizing: border-box; }}
     html, body, #windy {{ width: 100%; height: 100%; background: #0E2A24; }}
+    .course-pin {{
+      width: 28px;
+      height: 28px;
+      border-radius: 50% 50% 50% 0;
+      transform: rotate(-45deg);
+      background: #F7C948;
+      border: 3px solid #0B2D26;
+      box-shadow: 0 8px 18px rgba(0, 0, 0, 0.35);
+    }}
+    .course-pin::after {{
+      content: '';
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #0B2D26;
+      top: 7px;
+      left: 7px;
+    }}
+    .course-label {{
+      min-width: max-content;
+      padding: 7px 10px;
+      border-radius: 14px;
+      background: rgba(11, 45, 38, 0.92);
+      color: #F4FBF8;
+      border: 1px solid rgba(247, 201, 72, 0.75);
+      font: 700 13px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      box-shadow: 0 8px 18px rgba(0, 0, 0, 0.25);
+      white-space: nowrap;
+    }}
+    .map-caption {{
+      position: absolute;
+      left: 14px;
+      top: 14px;
+      z-index: 999;
+      padding: 8px 12px;
+      border-radius: 16px;
+      background: rgba(11, 45, 38, 0.9);
+      color: #F4FBF8;
+      border: 1px solid rgba(244, 251, 248, 0.18);
+      font: 700 13px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      pointer-events: none;
+    }}
+    .leaflet-popup-content-wrapper, .leaflet-popup-tip {{
+      background: #143630;
+      color: #F4FBF8;
+      border: 1px solid rgba(244, 251, 248, 0.16);
+    }}
   </style>
 </head>
 <body>
   <div id="windy"></div>
+  <div class="map-caption"></div>
   <script>
     const options = {{
       key: {safe_key},
@@ -110,7 +161,26 @@ async def windy_map(
     }};
     windyInit(options, function(windyAPI) {{
       const map = windyAPI.map;
-      L.marker([{lat}, {lng}]).addTo(map).bindPopup({safe_label});
+      const label = {safe_label};
+      document.querySelector('.map-caption').textContent = {safe_caption};
+      const pinIcon = L.divIcon({{
+        className: '',
+        html: '<div class="course-pin"></div>',
+        iconSize: [28, 28],
+        iconAnchor: [14, 28],
+        popupAnchor: [0, -30]
+      }});
+      const labelIcon = L.divIcon({{
+        className: '',
+        html: '<div class="course-label">' + label.replace(/[&<>]/g, function(c) {{
+          return {{'&':'&amp;','<':'&lt;','>':'&gt;'}}[c];
+        }}) + '</div>',
+        iconSize: null,
+        iconAnchor: [-18, 34]
+      }});
+      L.marker([{lat}, {lng}], {{ icon: pinIcon }}).addTo(map).bindPopup(label).openPopup();
+      L.marker([{lat}, {lng}], {{ icon: labelIcon, interactive: false }}).addTo(map);
+      map.setView([{lat}, {lng}], {zoom});
     }});
   </script>
 </body>
@@ -118,7 +188,13 @@ async def windy_map(
 """)
 
 
-def _leaflet_map_html(lat: float, lng: float, zoom: int, safe_label: str) -> str:
+def _leaflet_map_html(
+    lat: float,
+    lng: float,
+    zoom: int,
+    safe_label: str,
+    safe_caption: str,
+) -> str:
     return f"""
 <!DOCTYPE html>
 <html>
@@ -128,19 +204,86 @@ def _leaflet_map_html(lat: float, lng: float, zoom: int, safe_label: str) -> str
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <style>
-    * {{ margin: 0; padding: 0; }}
+    * {{ margin: 0; padding: 0; box-sizing: border-box; }}
     html, body, #map {{ width: 100%; height: 100%; }}
+    .course-pin {{
+      width: 28px;
+      height: 28px;
+      border-radius: 50% 50% 50% 0;
+      transform: rotate(-45deg);
+      background: #F7C948;
+      border: 3px solid #0B2D26;
+      box-shadow: 0 8px 18px rgba(0, 0, 0, 0.35);
+    }}
+    .course-pin::after {{
+      content: '';
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #0B2D26;
+      top: 7px;
+      left: 7px;
+    }}
+    .course-label {{
+      min-width: max-content;
+      padding: 7px 10px;
+      border-radius: 14px;
+      background: rgba(11, 45, 38, 0.92);
+      color: #F4FBF8;
+      border: 1px solid rgba(247, 201, 72, 0.75);
+      font: 700 13px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      box-shadow: 0 8px 18px rgba(0, 0, 0, 0.25);
+      white-space: nowrap;
+    }}
+    .map-caption {{
+      position: absolute;
+      left: 14px;
+      top: 14px;
+      z-index: 999;
+      padding: 8px 12px;
+      border-radius: 16px;
+      background: rgba(11, 45, 38, 0.9);
+      color: #F4FBF8;
+      border: 1px solid rgba(244, 251, 248, 0.18);
+      font: 700 13px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      pointer-events: none;
+    }}
+    .leaflet-popup-content-wrapper, .leaflet-popup-tip {{
+      background: #143630;
+      color: #F4FBF8;
+      border: 1px solid rgba(244, 251, 248, 0.16);
+    }}
   </style>
 </head>
 <body>
   <div id="map"></div>
+  <div class="map-caption"></div>
   <script>
     const map = L.map('map').setView([{lat}, {lng}], {zoom});
     L.tileLayer('https://tile.openstreetmap.org/{{z}}/{{x}}/{{y}}.png', {{
       maxZoom: 19,
       attribution: '&copy; OpenStreetMap'
     }}).addTo(map);
-    L.marker([{lat}, {lng}]).addTo(map).bindPopup({safe_label});
+    const label = {safe_label};
+    document.querySelector('.map-caption').textContent = {safe_caption};
+    const pinIcon = L.divIcon({{
+      className: '',
+      html: '<div class="course-pin"></div>',
+      iconSize: [28, 28],
+      iconAnchor: [14, 28],
+      popupAnchor: [0, -30]
+    }});
+    const labelIcon = L.divIcon({{
+      className: '',
+      html: '<div class="course-label">' + label.replace(/[&<>]/g, function(c) {{
+        return {{'&':'&amp;','<':'&lt;','>':'&gt;'}}[c];
+      }}) + '</div>',
+      iconSize: null,
+      iconAnchor: [-18, 34]
+    }});
+    L.marker([{lat}, {lng}], {{ icon: pinIcon }}).addTo(map).bindPopup(label).openPopup();
+    L.marker([{lat}, {lng}], {{ icon: labelIcon, interactive: false }}).addTo(map);
   </script>
 </body>
 </html>

@@ -1116,6 +1116,7 @@ class _MapScreenState extends ConsumerState<_MapScreen> {
               buildMapHtml(
                 lat: event!.lat!,
                 lng: event.lng!,
+                label: event.courseName ?? event.location ?? event.title,
               ),
             );
           },
