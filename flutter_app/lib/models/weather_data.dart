@@ -28,7 +28,8 @@ class GolfWeatherData {
     required this.screenGolfNearby,
   });
 
-  factory GolfWeatherData.fromJson(Map<String, dynamic> json) => GolfWeatherData(
+  factory GolfWeatherData.fromJson(Map<String, dynamic> json) =>
+      GolfWeatherData(
         courseId: json['course_id'] as String,
         courseName: json['course_name'] as String,
         region: json['region'] as String,
@@ -73,10 +74,14 @@ class AiRecommendation {
 
   StatusColor get color {
     switch (status) {
-      case 'GREEN': return StatusColor.green;
-      case 'YELLOW': return StatusColor.yellow;
-      case 'RED': return StatusColor.red;
-      default: return StatusColor.grey;
+      case 'GREEN':
+        return StatusColor.green;
+      case 'YELLOW':
+        return StatusColor.yellow;
+      case 'RED':
+        return StatusColor.red;
+      default:
+        return StatusColor.grey;
     }
   }
 }
@@ -86,7 +91,7 @@ enum StatusColor { green, yellow, red, grey }
 class CancellationPolicy {
   final bool? canCancelFree;
   final String? countdown;
-  final String urgency;   // NORMAL / HIGH / CRITICAL
+  final String urgency; // NORMAL / HIGH / CRITICAL
   final String message;
   final String? deadlineStr;
   final String sameDayPenalty;
@@ -169,14 +174,21 @@ class ForecastItem {
 
   String get skyEmoji {
     switch (sky) {
-      case 1: return '☀️';
-      case 3: return '⛅';
-      case 4: return '☁️';
-      default: return rainProb >= 60 ? '🌧️' : '🌤️';
+      case 1:
+        return '☀️';
+      case 3:
+        return '⛅';
+      case 4:
+        return '☁️';
+      default:
+        return rainProb >= 60 ? '🌧️' : '🌤️';
     }
   }
 
-  String get timeLabel => '${time.substring(0, 2)}시';
+  String get timeLabel {
+    if (time.length >= 2) return '${time.substring(0, 2)}시';
+    return '--시';
+  }
 
   String get weatherLabel {
     if (rainProb >= 60) return '강한 비';

@@ -33,7 +33,54 @@ def _filter_by_dday(forecasts: list[dict], dday: int) -> list[dict]:
     """D+dday 날짜 예보만 필터링"""
     target_date = (datetime.now() + timedelta(days=dday)).strftime("%Y%m%d")
     filtered = [f for f in forecasts if f.get("date") == target_date]
-    return filtered or forecasts[:8]  # 없으면 처음 8개
+    return sorted(filtered, key=lambda f: f.get("time", "")) or forecasts[:24]
+
+
+def _open_meteo_hourly_to_forecast(hourly_items: list[dict]) -> list[dict]:
+    forecasts: list[dict] = []
+    for item in hourly_items:
+        try:
+            dt = datetime.fromisoformat(str(item.get("datetime", "")))
+        except ValueError:
+            continue
+
+        code = int(item.get("weather_code") or 1)
+        rain_prob = int(item.get("rain_prob") or 0)
+        forecasts.append(
+            {
+                "date": dt.strftime("%Y%m%d"),
+                "time": dt.strftime("%H%M"),
+                "temp": float(item.get("temp") or 0),
+                "wind_speed": float(item.get("wind_speed") or 0),
+                "rain_prob": rain_prob,
+                "rain_type": 1 if rain_prob >= 50 else 0,
+                "sky": _sky_from_weather_code(code),
+                "lightning": 1 if code in {95, 96, 99} else 0,
+                "weather_code": code,
+            }
+        )
+    return forecasts
+
+
+def _filter_open_meteo_hourly_by_dday(
+    hourly_items: list[dict], dday: int
+) -> list[dict]:
+    return _filter_by_dday(_open_meteo_hourly_to_forecast(hourly_items), dday)
+
+
+def _filter_raw_open_meteo_hourly_by_dday(
+    hourly_items: list[dict], dday: int
+) -> list[dict]:
+    target_date = (datetime.now() + timedelta(days=dday)).date()
+    filtered: list[dict] = []
+    for item in hourly_items:
+        try:
+            dt = datetime.fromisoformat(str(item.get("datetime", "")))
+        except ValueError:
+            continue
+        if dt.date() == target_date:
+            filtered.append(item)
+    return filtered or hourly_items[:24]
 
 
 def _sky_from_weather_code(code: int) -> int:
@@ -146,6 +193,9 @@ async def get_custom_course_weather(
             lon,
         )
         forecasts = _filter_by_dday(all_forecasts, dday)
+        open_meteo_hourly = _filter_raw_open_meteo_hourly_by_dday(
+            open_meteo_hourly, dday
+        )
     except Exception:
         forecasts = _mock_custom_forecast(dday)
         open_meteo_hourly = []
@@ -223,11 +273,15 @@ async def get_course_weather(
         )
 
     data = json.loads(cached)
-    forecasts = _filter_by_dday(data.get("kma_forecast", []), dday)
+    kma_forecasts = _filter_by_dday(data.get("kma_forecast", []), dday)
+    hourly_forecasts = _filter_open_meteo_hourly_by_dday(
+        data.get("open_meteo_hourly", []), dday
+    )
+    forecasts = hourly_forecasts or kma_forecasts
 
     use_mock = os.getenv("USE_MOCK_DATA", "true").lower() == "true"
     recommendation = await get_golf_recommendation(
-        course["name"], forecasts, dday, use_mock
+        course["name"], kma_forecasts or forecasts, dday, use_mock
     )
 
     # 취소 정책 — 골프존 제휴 코스는 실시간 조회, 아닌 코스는 DB/폴백
@@ -274,7 +328,9 @@ async def get_course_weather(
         "last_updated": data.get("updated_at"),
         "source": data.get("source"),
         "forecast": forecasts,
-        "open_meteo_hourly": data.get("open_meteo_hourly", [])[:24],
+        "open_meteo_hourly": _filter_raw_open_meteo_hourly_by_dday(
+            data.get("open_meteo_hourly", []), dday
+        )[:24],
         "ai_recommendation": recommendation,
         "cancellation_policy": penalty_advice,
         "screen_golf_nearby": screen_golf_suggestions,

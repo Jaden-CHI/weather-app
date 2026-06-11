@@ -617,7 +617,7 @@ class _ForecastTrendCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final items = forecast.take(10).toList();
+    final items = forecast.take(24).toList();
     final temps = items.map((e) => e.temp).toList();
     final minTemp = temps.reduce((a, b) => a < b ? a : b);
     final maxTemp = temps.reduce((a, b) => a > b ? a : b);
