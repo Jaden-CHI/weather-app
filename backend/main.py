@@ -78,10 +78,10 @@ async def windy_map(
     api_key = os.getenv("WINDY_API_KEY", "").strip()
     marker_label = (label or "골프장 위치")[:80]
     safe_label = json.dumps(marker_label)
-    safe_caption = json.dumps(f"{marker_label} 위치 기준 바람 예보")
+
 
     if not api_key:
-        return HTMLResponse(_leaflet_map_html(lat, lng, zoom, safe_label, safe_caption))
+        return HTMLResponse(_leaflet_map_html(lat, lng, zoom, safe_label))
 
     safe_key = json.dumps(api_key)
     return HTMLResponse(f"""
@@ -125,18 +125,22 @@ async def windy_map(
       box-shadow: 0 8px 18px rgba(0, 0, 0, 0.25);
       white-space: nowrap;
     }}
-    .map-caption {{
+    .course-target {{
       position: absolute;
-      left: 14px;
-      top: 14px;
-      z-index: 999;
-      padding: 8px 12px;
-      border-radius: 16px;
-      background: rgba(11, 45, 38, 0.9);
-      color: #F4FBF8;
-      border: 1px solid rgba(244, 251, 248, 0.18);
-      font: 700 13px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      left: 50%;
+      top: 50%;
+      z-index: 1200;
+      transform: translate(-50%, -100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
       pointer-events: none;
+    }}
+    .course-target .course-label {{
+      max-width: 220px;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }}
     .leaflet-popup-content-wrapper, .leaflet-popup-tip {{
       background: #143630;
@@ -147,7 +151,10 @@ async def windy_map(
 </head>
 <body>
   <div id="windy"></div>
-  <div class="map-caption"></div>
+  <div class="course-target" aria-label="selected golf course">
+    <div class="course-label"></div>
+    <div class="course-pin"></div>
+  </div>
   <script>
     const options = {{
       key: {safe_key},
@@ -162,24 +169,7 @@ async def windy_map(
     windyInit(options, function(windyAPI) {{
       const map = windyAPI.map;
       const label = {safe_label};
-      document.querySelector('.map-caption').textContent = {safe_caption};
-      const pinIcon = L.divIcon({{
-        className: '',
-        html: '<div class="course-pin"></div>',
-        iconSize: [28, 28],
-        iconAnchor: [14, 28],
-        popupAnchor: [0, -30]
-      }});
-      const labelIcon = L.divIcon({{
-        className: '',
-        html: '<div class="course-label">' + label.replace(/[&<>]/g, function(c) {{
-          return {{'&':'&amp;','<':'&lt;','>':'&gt;'}}[c];
-        }}) + '</div>',
-        iconSize: null,
-        iconAnchor: [-18, 34]
-      }});
-      L.marker([{lat}, {lng}], {{ icon: pinIcon }}).addTo(map).bindPopup(label).openPopup();
-      L.marker([{lat}, {lng}], {{ icon: labelIcon, interactive: false }}).addTo(map);
+      document.querySelector('.course-target .course-label').textContent = label;
       map.setView([{lat}, {lng}], {zoom});
     }});
   </script>
@@ -193,7 +183,6 @@ def _leaflet_map_html(
     lng: float,
     zoom: int,
     safe_label: str,
-    safe_caption: str,
 ) -> str:
     return f"""
 <!DOCTYPE html>
@@ -236,18 +225,22 @@ def _leaflet_map_html(
       box-shadow: 0 8px 18px rgba(0, 0, 0, 0.25);
       white-space: nowrap;
     }}
-    .map-caption {{
+    .course-target {{
       position: absolute;
-      left: 14px;
-      top: 14px;
-      z-index: 999;
-      padding: 8px 12px;
-      border-radius: 16px;
-      background: rgba(11, 45, 38, 0.9);
-      color: #F4FBF8;
-      border: 1px solid rgba(244, 251, 248, 0.18);
-      font: 700 13px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      left: 50%;
+      top: 50%;
+      z-index: 1200;
+      transform: translate(-50%, -100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
       pointer-events: none;
+    }}
+    .course-target .course-label {{
+      max-width: 220px;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }}
     .leaflet-popup-content-wrapper, .leaflet-popup-tip {{
       background: #143630;
@@ -258,7 +251,10 @@ def _leaflet_map_html(
 </head>
 <body>
   <div id="map"></div>
-  <div class="map-caption"></div>
+  <div class="course-target" aria-label="selected golf course">
+    <div class="course-label"></div>
+    <div class="course-pin"></div>
+  </div>
   <script>
     const map = L.map('map').setView([{lat}, {lng}], {zoom});
     L.tileLayer('https://tile.openstreetmap.org/{{z}}/{{x}}/{{y}}.png', {{
@@ -266,24 +262,7 @@ def _leaflet_map_html(
       attribution: '&copy; OpenStreetMap'
     }}).addTo(map);
     const label = {safe_label};
-    document.querySelector('.map-caption').textContent = {safe_caption};
-    const pinIcon = L.divIcon({{
-      className: '',
-      html: '<div class="course-pin"></div>',
-      iconSize: [28, 28],
-      iconAnchor: [14, 28],
-      popupAnchor: [0, -30]
-    }});
-    const labelIcon = L.divIcon({{
-      className: '',
-      html: '<div class="course-label">' + label.replace(/[&<>]/g, function(c) {{
-        return {{'&':'&amp;','<':'&lt;','>':'&gt;'}}[c];
-      }}) + '</div>',
-      iconSize: null,
-      iconAnchor: [-18, 34]
-    }});
-    L.marker([{lat}, {lng}], {{ icon: pinIcon }}).addTo(map).bindPopup(label).openPopup();
-    L.marker([{lat}, {lng}], {{ icon: labelIcon, interactive: false }}).addTo(map);
+    document.querySelector('.course-target .course-label').textContent = label;
   </script>
 </body>
 </html>

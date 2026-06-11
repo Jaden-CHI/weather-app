@@ -57,18 +57,22 @@ String _sharedMapStyles(String rootId) => '''
       box-shadow: 0 8px 18px rgba(0, 0, 0, 0.25);
       white-space: nowrap;
     }
-    .map-caption {
+    .course-target {
       position: absolute;
-      left: 14px;
-      top: 14px;
-      z-index: 999;
-      padding: 8px 12px;
-      border-radius: 16px;
-      background: rgba(11, 45, 38, 0.9);
-      color: #F4FBF8;
-      border: 1px solid rgba(244, 251, 248, 0.18);
-      font: 700 13px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      left: 50%;
+      top: 50%;
+      z-index: 1200;
+      transform: translate(-50%, -100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
       pointer-events: none;
+    }
+    .course-target .course-label {
+      max-width: 220px;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
     .leaflet-popup-content-wrapper, .leaflet-popup-tip {
       background: #143630;
@@ -77,36 +81,20 @@ String _sharedMapStyles(String rootId) => '''
     }
 ''';
 
-String _markerScript({
-  required double lat,
-  required double lng,
-  required String label,
-  required String caption,
-}) {
+String _markerOverlayScript(String label) {
   final safeLabel = jsonEncode(label.trim().isEmpty ? '골프장 위치' : label.trim());
-  final safeCaption = jsonEncode(caption);
   return '''
     const label = $safeLabel;
-    document.querySelector('.map-caption').textContent = $safeCaption;
-    const pinIcon = L.divIcon({
-      className: '',
-      html: '<div class="course-pin"></div>',
-      iconSize: [28, 28],
-      iconAnchor: [14, 28],
-      popupAnchor: [0, -30]
-    });
-    const labelIcon = L.divIcon({
-      className: '',
-      html: '<div class="course-label">' + label.replace(/[&<>]/g, function(c) {
-        return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c];
-      }) + '</div>',
-      iconSize: null,
-      iconAnchor: [-18, 34]
-    });
-    L.marker([$lat, $lng], { icon: pinIcon }).addTo(map).bindPopup(label).openPopup();
-    L.marker([$lat, $lng], { icon: labelIcon, interactive: false }).addTo(map);
+    document.querySelector('.course-target .course-label').textContent = label;
 ''';
 }
+
+String _courseTargetHtml() => '''
+  <div class="course-target" aria-label="selected golf course">
+    <div class="course-label"></div>
+    <div class="course-pin"></div>
+  </div>
+''';
 
 String _buildWindyMapHtml({
   required double lat,
@@ -116,7 +104,6 @@ String _buildWindyMapHtml({
   required String windyApiKey,
 }) {
   final key = jsonEncode(windyApiKey);
-  final caption = '${label.trim().isEmpty ? '골프장' : label.trim()} 위치 기준 바람 예보';
   return '''
 <!DOCTYPE html>
 <html>
@@ -131,7 +118,7 @@ ${_sharedMapStyles('windy')}
 </head>
 <body>
   <div id="windy"></div>
-  <div class="map-caption"></div>
+${_courseTargetHtml()}
   <script>
     const options = {
       key: $key,
@@ -147,7 +134,7 @@ ${_sharedMapStyles('windy')}
 
     windyInit(options, function(windyAPI) {
       const map = windyAPI.map;
-${_markerScript(lat: lat, lng: lng, label: label, caption: caption)}
+${_markerOverlayScript(label)}
       map.setView([$lat, $lng], $zoom);
     });
   </script>
@@ -162,7 +149,6 @@ String _buildLeafletMapHtml({
   required String label,
   required int zoom,
 }) {
-  final caption = '${label.trim().isEmpty ? '골프장' : label.trim()} 위치 기준 지도';
   return '''
 <!DOCTYPE html>
 <html>
@@ -177,14 +163,14 @@ ${_sharedMapStyles('map')}
 </head>
 <body>
   <div id="map"></div>
-  <div class="map-caption"></div>
+${_courseTargetHtml()}
   <script>
     const map = L.map('map').setView([$lat, $lng], $zoom);
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
       attribution: '&copy; OpenStreetMap'
     }).addTo(map);
-${_markerScript(lat: lat, lng: lng, label: label, caption: caption)}
+${_markerOverlayScript(label)}
   </script>
 </body>
 </html>
