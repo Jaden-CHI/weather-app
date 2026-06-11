@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/app_config.dart';
+import '../config/api_keys.dart';
 import '../models/weather_data.dart';
 
 class CourseSearchResult {
@@ -122,6 +123,9 @@ class WeatherApiService {
     final trimmed = query.trim();
     if (trimmed.isEmpty) return null;
 
+    final kakao = await _geocodeWithKakao(trimmed);
+    if (kakao != null) return kakao;
+
     try {
       final dio = Dio(
         BaseOptions(
@@ -152,6 +156,47 @@ class WeatherApiService {
       debugPrint('⚠️ location geocode failed for "$trimmed": $e');
       return null;
     }
+  }
+
+  Future<LocationSearchResult?> _geocodeWithKakao(String query) async {
+    if (ApiKeys.kakaoMapKey.trim().isEmpty) return null;
+
+    final dio = Dio(
+      BaseOptions(
+        baseUrl: 'https://dapi.kakao.com',
+        connectTimeout: const Duration(seconds: 6),
+        receiveTimeout: const Duration(seconds: 8),
+        headers: {
+          'Authorization': 'KakaoAK ${ApiKeys.kakaoMapKey}',
+        },
+      ),
+    );
+
+    for (final path in const [
+      '/v2/local/search/keyword.json',
+      '/v2/local/search/address.json',
+    ]) {
+      try {
+        final resp = await dio.get(
+          path,
+          queryParameters: {'query': query, 'size': 1},
+        );
+        final documents = resp.data['documents'] as List<dynamic>? ?? [];
+        if (documents.isEmpty) continue;
+
+        final first = Map<String, dynamic>.from(documents.first as Map);
+        final lat = double.tryParse(first['y']?.toString() ?? '');
+        final lng = double.tryParse(first['x']?.toString() ?? '');
+        if (lat != null && lng != null) {
+          debugPrint('✅ Kakao geocode matched: $query → $lat,$lng');
+          return LocationSearchResult(lat: lat, lng: lng);
+        }
+      } catch (e) {
+        debugPrint('⚠️ Kakao geocode failed for "$query" ($path): $e');
+      }
+    }
+
+    return null;
   }
 
   Future<LocationSearchResult?> geocodeBestEffort({
