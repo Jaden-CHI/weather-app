@@ -154,6 +154,29 @@ class WeatherApiService {
     }
   }
 
+  Future<LocationSearchResult?> geocodeBestEffort({
+    required String courseName,
+    String? address,
+  }) async {
+    final trimmedCourse = courseName.trim();
+    final trimmedAddress = address?.trim() ?? '';
+    final queries = <String>[
+      if (trimmedAddress.isNotEmpty && trimmedCourse.isNotEmpty)
+        '$trimmedAddress $trimmedCourse',
+      if (trimmedCourse.isNotEmpty && trimmedAddress.isNotEmpty)
+        '$trimmedCourse $trimmedAddress',
+      if (trimmedAddress.isNotEmpty) trimmedAddress,
+      if (trimmedCourse.isNotEmpty) trimmedCourse,
+    ];
+
+    for (final query in queries.toSet()) {
+      final result = await geocodeLocation(query);
+      if (result != null) return result;
+    }
+
+    return null;
+  }
+
   static List<String> _courseSearchCandidates(String keyword) {
     final trimmed = keyword.trim();
     if (trimmed.isEmpty) return const [];
@@ -222,6 +245,30 @@ class WeatherApiService {
         return null;
       }
       rethrow;
+    }
+  }
+
+  /// DB에 없는 커스텀 골프장용 좌표 기반 날씨 조회
+  Future<GolfWeatherData?> getCustomGolfWeather({
+    required double lat,
+    required double lng,
+    required String courseName,
+    int dday = 0,
+  }) async {
+    try {
+      final resp = await _dio.get(
+        '/api/v1/golf/custom/weather',
+        queryParameters: {
+          'lat': lat,
+          'lon': lng,
+          'name': courseName,
+          'dday': dday,
+        },
+      );
+      return GolfWeatherData.fromJson(resp.data as Map<String, dynamic>);
+    } catch (e) {
+      debugPrint('⚠️ custom golf weather failed: $e');
+      return null;
     }
   }
 

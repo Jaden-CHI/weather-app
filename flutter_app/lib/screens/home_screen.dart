@@ -337,6 +337,7 @@ class _GolfHeroCard extends StatefulWidget {
 
 class _GolfHeroCardState extends State<_GolfHeroCard> {
   GolfWeatherData? _wx;
+  bool _weatherResolved = false;
 
   @override
   void initState() {
@@ -346,18 +347,55 @@ class _GolfHeroCardState extends State<_GolfHeroCard> {
 
   Future<void> _load() async {
     try {
-      var courseId = widget.event.courseId;
-      courseId ??= await WeatherApiService.instance.searchCourseId(
-        widget.event.courseName ?? widget.event.title,
+      final api = WeatherApiService.instance;
+      var event = widget.event;
+      var courseId = event.courseId;
+      courseId ??= await api.searchCourseId(
+        event.courseName ?? event.title,
       );
-      if (courseId == null || courseId.isEmpty) return;
-      final data = await WeatherApiService.instance.getGolfWeather(
-        courseId,
-        dday: widget.event.dday.clamp(0, 7),
-      );
-      if (mounted) setState(() => _wx = data);
+
+      GolfWeatherData? data;
+      if (courseId != null && courseId.isNotEmpty) {
+        data = await api.getGolfWeather(
+          courseId,
+          dday: event.dday.clamp(0, 7),
+        );
+      } else {
+        double? lat = event.lat;
+        double? lng = event.lng;
+        if (lat == null || lng == null) {
+          final geocoded = await api.geocodeBestEffort(
+            courseName: event.courseName ?? event.location ?? event.title,
+            address: event.address,
+          );
+          lat = geocoded?.lat;
+          lng = geocoded?.lng;
+          if (lat != null && lng != null) {
+            event = event.copyWith(lat: lat, lng: lng);
+            await AppScheduleService().updateSchedule(event.id, {
+              'lat': lat,
+              'lng': lng,
+            });
+          }
+        }
+        if (lat != null && lng != null) {
+          data = await api.getCustomGolfWeather(
+            lat: lat,
+            lng: lng,
+            courseName: event.courseName ?? event.location ?? event.title,
+            dday: event.dday.clamp(0, 7),
+          );
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _wx = data;
+          _weatherResolved = true;
+        });
+      }
     } catch (_) {
-      // 백엔드 미연결 시 카드는 일정 정보만 표시
+      if (mounted) setState(() => _weatherResolved = true);
     }
   }
 
@@ -426,7 +464,9 @@ class _GolfHeroCardState extends State<_GolfHeroCard> {
                     _AiChip(rec: _wx!.aiRecommendation),
                   ] else ...[
                     const SizedBox(height: 14),
-                    const _WxLoading(),
+                    _weatherResolved
+                        ? const _WxUnavailable()
+                        : const _WxLoading(),
                   ],
                 ],
               ),
@@ -577,6 +617,32 @@ class _WxLoading extends StatelessWidget {
   }
 }
 
+class _WxUnavailable extends StatelessWidget {
+  const _WxUnavailable();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.04),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _T.divider),
+      ),
+      child: const Text(
+        '주소 기반 날씨를 찾을 수 없습니다',
+        style: TextStyle(
+          color: _T.text3,
+          fontSize: 13,
+          fontWeight: FontWeight.w700,
+        ),
+        textAlign: TextAlign.center,
+      ),
+    );
+  }
+}
+
 // ── 골프 리스트 카드 (히어로 아래) ────────────────────────────
 class _GolfRowCard extends StatefulWidget {
   final GolfEvent event;
@@ -597,15 +663,47 @@ class _GolfRowCardState extends State<_GolfRowCard> {
 
   Future<void> _load() async {
     try {
-      var courseId = widget.event.courseId;
-      courseId ??= await WeatherApiService.instance.searchCourseId(
-        widget.event.courseName ?? widget.event.title,
+      final api = WeatherApiService.instance;
+      var event = widget.event;
+      var courseId = event.courseId;
+      courseId ??= await api.searchCourseId(
+        event.courseName ?? event.title,
       );
-      if (courseId == null || courseId.isEmpty) return;
-      final data = await WeatherApiService.instance.getGolfWeather(
-        courseId,
-        dday: widget.event.dday.clamp(0, 7),
-      );
+
+      GolfWeatherData? data;
+      if (courseId != null && courseId.isNotEmpty) {
+        data = await api.getGolfWeather(
+          courseId,
+          dday: event.dday.clamp(0, 7),
+        );
+      } else {
+        double? lat = event.lat;
+        double? lng = event.lng;
+        if (lat == null || lng == null) {
+          final geocoded = await api.geocodeBestEffort(
+            courseName: event.courseName ?? event.location ?? event.title,
+            address: event.address,
+          );
+          lat = geocoded?.lat;
+          lng = geocoded?.lng;
+          if (lat != null && lng != null) {
+            event = event.copyWith(lat: lat, lng: lng);
+            await AppScheduleService().updateSchedule(event.id, {
+              'lat': lat,
+              'lng': lng,
+            });
+          }
+        }
+        if (lat != null && lng != null) {
+          data = await api.getCustomGolfWeather(
+            lat: lat,
+            lng: lng,
+            courseName: event.courseName ?? event.location ?? event.title,
+            dday: event.dday.clamp(0, 7),
+          );
+        }
+      }
+
       if (mounted) setState(() => _wx = data);
     } catch (_) {
       // 백엔드 미연결 시 카드는 일정 정보만 표시
@@ -998,6 +1096,7 @@ class _MapScreenState extends ConsumerState<_MapScreen> {
   String? _loadedMapKey;
   GolfEvent? _fallbackEvent;
   bool _isMapLoading = false;
+  final Set<String> _resolvingLocationIds = {};
 
   @override
   void initState() {
@@ -1049,6 +1148,41 @@ class _MapScreenState extends ConsumerState<_MapScreen> {
     }
   }
 
+  Future<void> _resolveLocationAndLoadMap(GolfEvent event) async {
+    if (event.lat != null && event.lng != null) {
+      await _loadMap(event);
+      return;
+    }
+
+    if (_resolvingLocationIds.contains(event.id)) return;
+
+    _resolvingLocationIds.add(event.id);
+    if (mounted) {
+      setState(() => _isMapLoading = true);
+    }
+
+    try {
+      final result = await WeatherApiService.instance.geocodeBestEffort(
+        courseName: event.courseName ?? event.location ?? event.title,
+        address: event.address,
+      );
+      if (result == null) return;
+
+      await AppScheduleService().updateSchedule(event.id, {
+        'lat': result.lat,
+        'lng': result.lng,
+      });
+      ref.invalidate(golfEventsProvider);
+
+      await _loadMap(event.copyWith(lat: result.lat, lng: result.lng));
+    } finally {
+      _resolvingLocationIds.remove(event.id);
+      if (mounted) {
+        setState(() => _isMapLoading = false);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final async = ref.watch(golfEventsProvider);
@@ -1065,17 +1199,22 @@ class _MapScreenState extends ConsumerState<_MapScreen> {
           );
         }
 
+        final defaultEvent = events.firstWhere(
+          (e) => e.lat != null && e.lng != null,
+          orElse: () => events.firstWhere(
+            (e) => (e.address ?? '').trim().isNotEmpty,
+            orElse: () => events.first,
+          ),
+        );
         final selected = events.firstWhere(
           (e) => e.id == _selectedEventId,
-          orElse: () => events.first,
+          orElse: () => defaultEvent,
         );
         _selectedEventId ??= selected.id;
 
-        if (selected.lat != null && selected.lng != null) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) _loadMap(selected);
-          });
-        }
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _resolveLocationAndLoadMap(selected);
+        });
 
         return Column(
           children: [
@@ -1141,7 +1280,15 @@ class _MapScreenState extends ConsumerState<_MapScreen> {
             const SizedBox(height: 10),
             Expanded(
               child: selected.lat == null || selected.lng == null
-                  ? _MapMissingLocation(event: selected)
+                  ? Stack(
+                      children: [
+                        _MapMissingLocation(event: selected),
+                        if (_isMapLoading)
+                          const Center(
+                            child: CircularProgressIndicator(color: _T.brand),
+                          ),
+                      ],
+                    )
                   : Stack(
                       children: [
                         WebViewWidget(controller: webViewController),
