@@ -1,7 +1,7 @@
 name: weather_app
 description: Golf Windy - 골프장 날씨 가이드
 publish_to: none
-version: 1.0.4+9
+version: 1.0.6+11
 
 environment:
   sdk: ">=3.3.0 <4.0.0"

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import '../models/golf_event.dart';
 import '../services/app_schedule_service.dart';
@@ -21,6 +23,10 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
   late int _notifyHours;
   bool _weatherAlert = true;
   bool _isLoading = false;
+  Timer? _courseSearchDebounce;
+  List<CourseSearchResult> _courseSuggestions = [];
+  CourseSearchResult? _selectedCourse;
+  bool _isSearchingCourses = false;
 
   @override
   void initState() {
@@ -30,6 +36,7 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
         widget.editingEvent?.startDate ?? DateTime.now());
     _courseNameController =
         TextEditingController(text: widget.editingEvent?.location ?? '');
+    _courseNameController.addListener(_onCourseNameChanged);
     _addressController =
         TextEditingController(text: widget.editingEvent?.address ?? '');
     _titleController =
@@ -39,10 +46,60 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
 
   @override
   void dispose() {
+    _courseSearchDebounce?.cancel();
     _courseNameController.dispose();
     _addressController.dispose();
     _titleController.dispose();
     super.dispose();
+  }
+
+  void _onCourseNameChanged() {
+    final keyword = _courseNameController.text.trim();
+    if (_selectedCourse != null && _selectedCourse!.name != keyword) {
+      _selectedCourse = null;
+    }
+
+    _courseSearchDebounce?.cancel();
+    if (keyword.isEmpty) {
+      setState(() {
+        _courseSuggestions = [];
+        _isSearchingCourses = false;
+      });
+      return;
+    }
+
+    _courseSearchDebounce = Timer(const Duration(milliseconds: 260), () {
+      _searchCourseSuggestions(keyword);
+    });
+  }
+
+  Future<void> _searchCourseSuggestions(String keyword) async {
+    if (!mounted) return;
+    setState(() => _isSearchingCourses = true);
+
+    final results =
+        await WeatherApiService.instance.searchCourseSuggestions(keyword);
+
+    if (!mounted || _courseNameController.text.trim() != keyword) return;
+    setState(() {
+      _courseSuggestions = results;
+      _isSearchingCourses = false;
+    });
+  }
+
+  void _selectCourseSuggestion(CourseSearchResult course) {
+    _courseSearchDebounce?.cancel();
+    _courseNameController.removeListener(_onCourseNameChanged);
+    _courseNameController.text = course.name;
+    _courseNameController.selection = TextSelection.collapsed(
+      offset: course.name.length,
+    );
+    _courseNameController.addListener(_onCourseNameChanged);
+    setState(() {
+      _selectedCourse = course;
+      _courseSuggestions = [];
+      _isSearchingCourses = false;
+    });
   }
 
   Future<void> _selectDate() async {
@@ -91,7 +148,9 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
       var weatherAlertForSave = _weatherAlert;
 
       if (_weatherAlert) {
-        course = await WeatherApiService.instance.searchCourse(courseName);
+        course = _selectedCourse?.name == courseName
+            ? _selectedCourse
+            : await WeatherApiService.instance.searchCourse(courseName);
         courseId = course?.courseId ??
             await WeatherApiService.instance.searchCourseId(courseName);
 
@@ -110,9 +169,11 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
         lng = course?.lng ?? lng;
       }
 
-      if ((lat == null || lng == null) && address.isNotEmpty) {
-        final geocoded =
-            await WeatherApiService.instance.geocodeLocation(address);
+      if (lat == null || lng == null) {
+        final geocoded = await WeatherApiService.instance.geocodeBestEffort(
+          courseName: courseName,
+          address: address,
+        );
         lat = geocoded?.lat ?? lat;
         lng = geocoded?.lng ?? lng;
       }
@@ -213,7 +274,7 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
 
               // 골프장
               _buildSectionLabel('골프장 *'),
-              _buildTextField(_courseNameController, '예: 레이크사이드CC'),
+              _buildCourseNameField(),
               const SizedBox(height: 16),
 
               // 주소
@@ -287,6 +348,95 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
       label,
       style: const TextStyle(
           color: Color(0xB3F4FBF8), fontSize: 13, fontWeight: FontWeight.w500),
+    );
+  }
+
+  Widget _buildCourseNameField() {
+    return Column(
+      children: [
+        _buildTextField(_courseNameController, '예: 레이크사이드CC'),
+        if (_isSearchingCourses)
+          const Padding(
+            padding: EdgeInsets.only(top: 8),
+            child: LinearProgressIndicator(
+              minHeight: 2,
+              backgroundColor: Color(0xFF143630),
+              color: Color(0xFF2E7D6B),
+            ),
+          ),
+        if (_courseSuggestions.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Container(
+            decoration: BoxDecoration(
+              color: const Color(0xFF143630),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: const Color(0x1FF4FBF8)),
+            ),
+            child: Column(
+              children: _courseSuggestions.map((course) {
+                final subtitle = course.nameShort?.trim();
+                return InkWell(
+                  onTap: () => _selectCourseSuggestion(course),
+                  borderRadius: BorderRadius.circular(8),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 12,
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.flag_outlined,
+                          color: Color(0xFF7DDEC3),
+                          size: 18,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                course.name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: Color(0xFFF4FBF8),
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              if (subtitle != null &&
+                                  subtitle.isNotEmpty &&
+                                  subtitle != course.name)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 2),
+                                  child: Text(
+                                    subtitle,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      color: Color(0x99F4FBF8),
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                        const Icon(
+                          Icons.check_circle_outline,
+                          color: Color(0x802E7D6B),
+                          size: 18,
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+        ],
+      ],
     );
   }
 

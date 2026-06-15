@@ -119,6 +119,51 @@ class WeatherApiService {
     return null;
   }
 
+  /// 골프장 이름 검색 → 입력 자동완성용 후보 목록 반환
+  Future<List<CourseSearchResult>> searchCourseSuggestions(
+    String keyword, {
+    int limit = 6,
+  }) async {
+    final candidates = _courseSearchCandidates(keyword);
+    if (candidates.isEmpty) return const [];
+
+    final seen = <String>{};
+    final suggestions = <CourseSearchResult>[];
+
+    for (final q in candidates) {
+      try {
+        final resp = await _dio.get(
+          '/api/v1/golf/courses/search',
+          queryParameters: {'q': q},
+        );
+        final results = (resp.data['results'] as List<dynamic>? ?? [])
+            .whereType<Map>()
+            .map((e) => CourseSearchResult.fromJson(
+                  Map<String, dynamic>.from(e),
+                ))
+            .toList();
+
+        for (final result in results) {
+          if (seen.add(result.courseId)) {
+            suggestions.add(result);
+          }
+          if (suggestions.length >= limit) return suggestions;
+        }
+      } on DioException catch (e) {
+        if (e.response?.statusCode == 404) continue;
+        debugPrint('⚠️ course suggestions failed for "$q": ${e.message}');
+        break;
+      } catch (e) {
+        debugPrint('⚠️ course suggestions failed for "$q": $e');
+        break;
+      }
+    }
+
+    suggestions.sort((a, b) => _courseMatchScore(keyword, a)
+        .compareTo(_courseMatchScore(keyword, b)));
+    return suggestions.take(limit).toList();
+  }
+
   Future<LocationSearchResult?> geocodeLocation(String query) async {
     final trimmed = query.trim();
     if (trimmed.isEmpty) return null;
@@ -252,19 +297,19 @@ class WeatherApiService {
     String keyword,
     List<CourseSearchResult> results,
   ) {
-    final needle = _canonicalCourseKeyword(keyword);
-
-    int score(CourseSearchResult course) {
-      final name = _canonicalCourseKeyword(course.name);
-      final shortName = _canonicalCourseKeyword(course.nameShort ?? '');
-      if (name == needle || shortName == needle) return 0;
-      if (name.startsWith(needle) || shortName.startsWith(needle)) return 1;
-      if (name.contains(needle) || shortName.contains(needle)) return 2;
-      return 3;
-    }
-
-    results.sort((a, b) => score(a).compareTo(score(b)));
+    results.sort((a, b) => _courseMatchScore(keyword, a)
+        .compareTo(_courseMatchScore(keyword, b)));
     return results.first;
+  }
+
+  static int _courseMatchScore(String keyword, CourseSearchResult course) {
+    final needle = _canonicalCourseKeyword(keyword);
+    final name = _canonicalCourseKeyword(course.name);
+    final shortName = _canonicalCourseKeyword(course.nameShort ?? '');
+    if (name == needle || shortName == needle) return 0;
+    if (name.startsWith(needle) || shortName.startsWith(needle)) return 1;
+    if (name.contains(needle) || shortName.contains(needle)) return 2;
+    return 3;
   }
 
   static String _canonicalCourseKeyword(String value) {

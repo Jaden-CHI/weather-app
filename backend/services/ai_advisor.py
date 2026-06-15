@@ -2,7 +2,6 @@
 
 import json
 import os
-from typing import Any
 
 import anthropic
 
@@ -39,9 +38,10 @@ async def get_golf_recommendation(
     use_mock: bool = False,
 ) -> dict:
     """골프 취소/진행 권고 생성. ANTHROPIC_API_KEY 없으면 규칙 기반으로 폴백"""
+    rule_based = _rule_based_golf(forecasts, dday)
     api_key = os.getenv("ANTHROPIC_API_KEY", "")
     if use_mock or not api_key:
-        return _rule_based_golf(forecasts, dday)
+        return rule_based
 
     summary = _build_weather_summary(forecasts)
     prompt = f"""골프장: {course_name}
@@ -53,7 +53,11 @@ D-{dday} 날씨 요약: {summary}
 기준:
 - RED: 강수확률 70%↑ OR 풍속 12m/s↑ OR 낙뢰 예보
 - YELLOW: 강수확률 40~69% OR 풍속 8~12m/s
-- GREEN: 그 외"""
+- GREEN: 그 외
+
+중요:
+- 위 기준을 넘지 않으면 절대 RED로 판단하지 마.
+- RED/YELLOW/GREEN은 반드시 제공된 수치만 기준으로 판단해."""
 
     try:
         resp = await _get_client().messages.create(
@@ -61,9 +65,10 @@ D-{dday} 날씨 요약: {summary}
             max_tokens=200,
             messages=[{"role": "user", "content": prompt}],
         )
-        return json.loads(resp.content[0].text.strip())
+        ai_result = json.loads(resp.content[0].text.strip())
+        return _enforce_golf_weather_status(ai_result, rule_based)
     except Exception:
-        return _rule_based_golf(forecasts, dday)
+        return rule_based
 
 
 async def get_marine_recommendation(
@@ -109,6 +114,22 @@ async def get_marine_recommendation(
 
 
 # ── 규칙 기반 폴백 (API 키 없을 때) ──────────────────────────────
+def _enforce_golf_weather_status(ai_result: dict, rule_based: dict) -> dict:
+    """Keep recommendation severity aligned with measurable weather thresholds."""
+    ai_status = str(ai_result.get("status", "")).upper()
+    rule_status = str(rule_based.get("status", "UNKNOWN")).upper()
+    if ai_status != rule_status:
+        return rule_based
+
+    message = str(ai_result.get("message") or rule_based["message"]).strip()
+    detail = str(ai_result.get("detail") or rule_based["detail"]).strip()
+    return {
+        "status": rule_status,
+        "message": message[:60],
+        "detail": detail[:120],
+    }
+
+
 def _rule_based_golf(forecasts: list[dict], dday: int) -> dict:
     if not forecasts:
         return {"status": "UNKNOWN", "message": "예보 데이터 없음", "detail": "기상 데이터를 불러오지 못했습니다"}

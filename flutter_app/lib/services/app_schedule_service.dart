@@ -1,10 +1,13 @@
-import 'package:firebase_database/firebase_database.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:uuid/uuid.dart';
+
 import '../models/golf_event.dart';
 
 class AppScheduleService {
-  static const String _schedulesPath = 'schedules';
+  static const String _localSchedulesKey = 'golf_schedules_v2';
   static const Set<String> _generatedTestCourseNames = {
     '레이크사이드CC',
     '올림픽CC',
@@ -12,11 +15,6 @@ class AppScheduleService {
     '강남300CC',
     '리앤리C.C',
   };
-
-  final _database = FirebaseDatabase.instance.ref();
-  final _auth = FirebaseAuth.instance;
-
-  String get _uid => _auth.currentUser?.uid ?? 'anonymous';
 
   Future<void> addGolfSchedule({
     required String title,
@@ -29,7 +27,8 @@ class AppScheduleService {
     required bool weatherAlertEnabled,
     String? courseId,
   }) async {
-    final scheduleId = _database.child(_schedulesPath).child(_uid).push().key!;
+    final scheduleId = const Uuid().v4();
+    final schedules = await _loadSchedules();
     final data = {
       'type': 'golf',
       'title': title,
@@ -48,31 +47,24 @@ class AppScheduleService {
       data['lat'] = lat;
       data['lng'] = lng;
     }
-    await _database
-        .child(_schedulesPath)
-        .child(_uid)
-        .child(scheduleId)
-        .set(data);
+
+    schedules[scheduleId] = data;
+    await _saveSchedules(schedules);
   }
 
   Future<List<GolfEvent>> getUpcomingGolfSchedules() async {
     try {
-      debugPrint('📍 Getting golf schedules for UID: $_uid');
-      final snapshot = await _database
-          .child(_schedulesPath)
-          .child(_uid)
-          .get()
-          .timeout(const Duration(seconds: 5));
+      debugPrint('Getting local golf schedules');
+      final data = await _loadSchedules();
 
-      if (!snapshot.exists) {
-        debugPrint('⚠️ No schedules found for UID: $_uid');
+      if (data.isEmpty) {
+        debugPrint('No local schedules found');
         return [];
       }
 
       final events = <GolfEvent>[];
-      final data = snapshot.value as Map<dynamic, dynamic>;
       final now = DateTime.now();
-      debugPrint('📊 Found ${data.length} schedules');
+      debugPrint('Found ${data.length} local schedules');
 
       data.forEach((scheduleId, scheduleData) {
         final schedule = Map<String, dynamic>.from(scheduleData);
@@ -97,10 +89,10 @@ class AppScheduleService {
       });
 
       events.sort((a, b) => a.startDate.compareTo(b.startDate));
-      debugPrint('✅ Got ${events.length} golf events');
+      debugPrint('Got ${events.length} local golf events');
       return events;
     } catch (e) {
-      debugPrint('❌ Golf schedules fetch error: $e');
+      debugPrint('Golf schedules fetch error: $e');
       return [];
     }
   }
@@ -118,15 +110,11 @@ class AppScheduleService {
 
   Future<GolfEvent?> getScheduleById(String scheduleId) async {
     try {
-      final snapshot = await _database
-          .child(_schedulesPath)
-          .child(_uid)
-          .child(scheduleId)
-          .get();
+      final schedules = await _loadSchedules();
+      final raw = schedules[scheduleId];
+      if (raw == null) return null;
 
-      if (!snapshot.exists) return null;
-
-      final schedule = Map<String, dynamic>.from(snapshot.value as Map);
+      final schedule = Map<String, dynamic>.from(raw);
       if (schedule['type'] != 'golf') return null;
 
       return GolfEvent(
@@ -141,7 +129,7 @@ class AppScheduleService {
         lng: (schedule['lng'] as num?)?.toDouble(),
       );
     } catch (e) {
-      debugPrint('❌ Error getting schedule $scheduleId: $e');
+      debugPrint('Error getting schedule $scheduleId: $e');
       return null;
     }
   }
@@ -150,20 +138,22 @@ class AppScheduleService {
     String scheduleId,
     Map<String, dynamic> updates,
   ) async {
+    final schedules = await _loadSchedules();
+    final current = schedules[scheduleId];
+    if (current == null) return;
+
     updates['updatedAt'] = DateTime.now().millisecondsSinceEpoch;
-    await _database
-        .child(_schedulesPath)
-        .child(_uid)
-        .child(scheduleId)
-        .update(updates);
+    schedules[scheduleId] = {
+      ...current,
+      ...updates,
+    };
+    await _saveSchedules(schedules);
   }
 
   Future<void> deleteSchedule(String scheduleId) async {
-    await _database
-        .child(_schedulesPath)
-        .child(_uid)
-        .child(scheduleId)
-        .remove();
+    final schedules = await _loadSchedules();
+    schedules.remove(scheduleId);
+    await _saveSchedules(schedules);
   }
 
   bool _isGeneratedTestSchedule(Map<String, dynamic> schedule) {
@@ -173,5 +163,23 @@ class AppScheduleService {
     return locationName != null &&
         title == '$locationName 라운드' &&
         _generatedTestCourseNames.contains(locationName);
+  }
+
+  Future<Map<String, Map<String, dynamic>>> _loadSchedules() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_localSchedulesKey);
+    if (raw == null || raw.isEmpty) return {};
+
+    final decoded = jsonDecode(raw) as Map<String, dynamic>;
+    return decoded.map(
+      (key, value) => MapEntry(key, Map<String, dynamic>.from(value as Map)),
+    );
+  }
+
+  Future<void> _saveSchedules(
+    Map<String, Map<String, dynamic>> schedules,
+  ) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_localSchedulesKey, jsonEncode(schedules));
   }
 }
