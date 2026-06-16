@@ -319,10 +319,31 @@ async def get_course_weather(
         )
 
     data = json.loads(cached)
-    kma_forecasts = _filter_by_dday(data.get("kma_forecast", []), dday)
-    hourly_forecasts = _filter_open_meteo_hourly_by_dday(
-        data.get("open_meteo_hourly", []), dday
-    )
+    source = data.get("source")
+    if (
+        source == "MOCK"
+        and course.get("lat") is not None
+        and course.get("lon") is not None
+    ):
+        try:
+            all_forecasts, live_open_meteo_hourly, live_source = (
+                await _fetch_custom_open_meteo(course["lat"], course["lon"])
+            )
+            data["kma_forecast"] = []
+            data["open_meteo_hourly"] = live_open_meteo_hourly
+            source = live_source
+            kma_forecasts = []
+            hourly_forecasts = _filter_by_dday(all_forecasts, dday)
+        except Exception:
+            kma_forecasts = _filter_by_dday(data.get("kma_forecast", []), dday)
+            hourly_forecasts = _filter_open_meteo_hourly_by_dday(
+                data.get("open_meteo_hourly", []), dday
+            )
+    else:
+        kma_forecasts = _filter_by_dday(data.get("kma_forecast", []), dday)
+        hourly_forecasts = _filter_open_meteo_hourly_by_dday(
+            data.get("open_meteo_hourly", []), dday
+        )
     forecasts = hourly_forecasts or kma_forecasts
 
     use_mock = os.getenv("USE_MOCK_DATA", "true").lower() == "true"
@@ -373,7 +394,7 @@ async def get_course_weather(
             "%Y-%m-%d"
         ),
         "last_updated": data.get("updated_at"),
-        "source": data.get("source"),
+        "source": source,
         "forecast": forecasts,
         "open_meteo_hourly": _filter_raw_open_meteo_hourly_by_dday(
             data.get("open_meteo_hourly", []), dday
