@@ -9,6 +9,7 @@ import '../services/weather_api_service.dart';
 import '../services/app_schedule_service.dart';
 import 'add_schedule_screen.dart';
 import 'restaurant_screen.dart';
+import 'scorecard_screen.dart';
 
 class _T {
   static const bgDeep = Color(0xFF0E2A24);
@@ -158,6 +159,15 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     }
   }
 
+  Future<void> _openScorecard() async {
+    await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ScorecardScreen(event: widget.golfEvent),
+      ),
+    );
+  }
+
   Future<void> _delete() async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -268,7 +278,11 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                     child: CircularProgressIndicator(color: _T.brand))
                 : _error != null
                     ? _ErrorBody(message: _error!)
-                    : _GolfDetailBody(data: _golfData, event: widget.golfEvent),
+                    : _GolfDetailBody(
+                        data: _golfData,
+                        event: widget.golfEvent,
+                        onScorecard: _openScorecard,
+                      ),
           ),
         ]),
       ),
@@ -394,13 +408,21 @@ class _ErrorBody extends StatelessWidget {
 class _GolfDetailBody extends StatelessWidget {
   final GolfWeatherData? data;
   final GolfEvent event;
+  final VoidCallback? onScorecard;
 
-  const _GolfDetailBody({required this.data, required this.event});
+  const _GolfDetailBody({
+    required this.data,
+    required this.event,
+    this.onScorecard,
+  });
 
   @override
   Widget build(BuildContext context) {
     if (data == null) {
-      return _CustomGolfDetailBody(event: event);
+      return _CustomGolfDetailBody(
+        event: event,
+        onScorecard: onScorecard,
+      );
     }
 
     final rec = data!.aiRecommendation;
@@ -436,6 +458,8 @@ class _GolfDetailBody extends StatelessWidget {
             ],
           ),
         ),
+        const SizedBox(height: 20),
+        _ScorecardEntry(event: event, onTap: onScorecard),
         const SizedBox(height: 20),
         if (data!.forecast.isNotEmpty) ...[
           const Text('부킹 시간대 예보',
@@ -497,7 +521,11 @@ class _GolfDetailBody extends StatelessWidget {
 
 class _CustomGolfDetailBody extends StatelessWidget {
   final GolfEvent event;
-  const _CustomGolfDetailBody({required this.event});
+  final VoidCallback? onScorecard;
+  const _CustomGolfDetailBody({
+    required this.event,
+    this.onScorecard,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -548,6 +576,8 @@ class _CustomGolfDetailBody extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 20),
+        _ScorecardEntry(event: event, onTap: onScorecard),
+        const SizedBox(height: 20),
         if (hasLocation)
           GestureDetector(
             onTap: () {
@@ -591,6 +621,73 @@ class _CustomGolfDetailBody extends StatelessWidget {
             ),
           ),
       ],
+    );
+  }
+}
+
+class _ScorecardEntry extends StatelessWidget {
+  final GolfEvent event;
+  final VoidCallback? onTap;
+
+  const _ScorecardEntry({
+    required this.event,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: _T.bgElev1,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: _T.divider),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: _T.greenBg,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: _T.greenBorder),
+              ),
+              child: const Icon(
+                Icons.scoreboard_outlined,
+                color: _T.green,
+                size: 21,
+              ),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '스코어카드',
+                    style: TextStyle(
+                      color: _T.text1,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    '18홀 타수·퍼트·페어웨이 기록',
+                    style: TextStyle(color: _T.text3, fontSize: 12),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.arrow_forward_ios, color: _T.text3, size: 16),
+          ],
+        ),
+      ),
     );
   }
 }

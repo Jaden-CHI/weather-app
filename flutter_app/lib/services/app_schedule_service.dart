@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
 import '../models/golf_event.dart';
+import 'scorecard_service.dart';
 
 class AppScheduleService {
   static const String _localSchedulesKey = 'golf_schedules_v2';
@@ -154,6 +155,7 @@ class AppScheduleService {
     final schedules = await _loadSchedules();
     schedules.remove(scheduleId);
     await _saveSchedules(schedules);
+    await ScorecardService.instance.deleteScoreForSchedule(scheduleId);
   }
 
   bool _isGeneratedTestSchedule(Map<String, dynamic> schedule) {
