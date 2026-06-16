@@ -361,6 +361,7 @@ class _GolfHeroCardState extends State<_GolfHeroCard> {
         data = await api.getGolfWeather(
           courseId,
           dday: event.dday.clamp(0, 7),
+          startHour: event.startDate.hour,
         );
       } else {
         double? lat = event.lat;
@@ -386,6 +387,7 @@ class _GolfHeroCardState extends State<_GolfHeroCard> {
             lng: lng,
             courseName: event.courseName ?? event.location ?? event.title,
             dday: event.dday.clamp(0, 7),
+            startHour: event.startDate.hour,
           );
         }
       }
@@ -677,6 +679,7 @@ class _GolfRowCardState extends State<_GolfRowCard> {
         data = await api.getGolfWeather(
           courseId,
           dday: event.dday.clamp(0, 7),
+          startHour: event.startDate.hour,
         );
       } else {
         double? lat = event.lat;
@@ -702,6 +705,7 @@ class _GolfRowCardState extends State<_GolfRowCard> {
             lng: lng,
             courseName: event.courseName ?? event.location ?? event.title,
             dday: event.dday.clamp(0, 7),
+            startHour: event.startDate.hour,
           );
         }
       }

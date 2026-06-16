@@ -91,8 +91,11 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       courseId ??= await _api.searchCourseId(event.courseName ?? event.title);
 
       if (courseId != null && courseId.isNotEmpty) {
-        _golfData =
-            await _api.getGolfWeather(courseId, dday: event.dday.clamp(0, 7));
+        _golfData = await _api.getGolfWeather(
+          courseId,
+          dday: event.dday.clamp(0, 7),
+          startHour: event.startDate.hour,
+        );
       } else {
         double? lat = event.lat;
         double? lng = event.lng;
@@ -119,6 +122,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
             lng: lng,
             courseName: event.courseName ?? event.location ?? event.title,
             dday: event.dday.clamp(0, 7),
+            startHour: event.startDate.hour,
           );
         } else {
           _golfData = null;
@@ -434,11 +438,14 @@ class _GolfDetailBody extends StatelessWidget {
         ),
         const SizedBox(height: 20),
         if (data!.forecast.isNotEmpty) ...[
-          const Text('시간대별 예보',
+          const Text('부킹 시간대 예보',
               style: TextStyle(
                   color: _T.text1, fontSize: 14, fontWeight: FontWeight.w700)),
           const SizedBox(height: 12),
-          _ForecastTrendCard(forecast: data!.forecast),
+          _ForecastTrendCard(
+            forecast: data!.forecast,
+            bookingTime: event.startDate,
+          ),
         ],
         const SizedBox(height: 24),
         // 식당 추천 섹션
@@ -613,11 +620,17 @@ class _InfoLine extends StatelessWidget {
 
 class _ForecastTrendCard extends StatelessWidget {
   final List<ForecastItem> forecast;
-  const _ForecastTrendCard({required this.forecast});
+  final DateTime bookingTime;
+  const _ForecastTrendCard({
+    required this.forecast,
+    required this.bookingTime,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final items = forecast.take(24).toList();
+    final items = _bookingWindowItems();
+    if (items.isEmpty) return const SizedBox.shrink();
+
     final temps = items.map((e) => e.temp).toList();
     final minTemp = temps.reduce((a, b) => a < b ? a : b);
     final maxTemp = temps.reduce((a, b) => a > b ? a : b);
@@ -630,71 +643,156 @@ class _ForecastTrendCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: _T.divider),
       ),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          children: items.map((f) {
-            final normalized = ((f.temp - minTemp) / range).clamp(0.0, 1.0);
-            final barHeight = 18 + (normalized * 42);
-            final rainHeight = (f.rainProb / 100 * 34).clamp(4.0, 34.0);
-
-            return SizedBox(
-              width: 72,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(f.timeLabel,
-                      style: const TextStyle(color: _T.text3, fontSize: 12)),
-                  const SizedBox(height: 8),
-                  Text(f.skyEmoji, style: const TextStyle(fontSize: 24)),
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    height: 66,
-                    child: Align(
-                      alignment: Alignment.bottomCenter,
-                      child: Container(
-                        width: 8,
-                        height: barHeight,
-                        decoration: BoxDecoration(
-                          color: _T.green.withOpacity(0.9),
-                          borderRadius: BorderRadius.circular(99),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text('${f.temp.toInt()}°',
-                      style: const TextStyle(
-                          color: _T.text1,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w800)),
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    height: 34,
-                    child: Align(
-                      alignment: Alignment.bottomCenter,
-                      child: Container(
-                        width: 22,
-                        height: rainHeight,
-                        decoration: BoxDecoration(
-                          color: f.rainProb >= 40 ? _T.yellow : _T.brand,
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text('비 ${f.rainProb}%',
-                      style: const TextStyle(color: _T.text3, fontSize: 11)),
-                  const SizedBox(height: 2),
-                  Text('${f.windSpeed.toStringAsFixed(1)}m/s',
-                      style: const TextStyle(color: _T.text3, fontSize: 11)),
-                ],
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.schedule_outlined, color: _T.text3, size: 15),
+              const SizedBox(width: 6),
+              Text(
+                '부킹 ${_bookingTimeLabel()} 기준',
+                style: const TextStyle(color: _T.text3, fontSize: 12),
               ),
-            );
-          }).toList(),
-        ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: items.map((f) {
+                final normalized = ((f.temp - minTemp) / range).clamp(0.0, 1.0);
+                final barHeight = 18 + (normalized * 42);
+                final rainHeight = (f.rainProb / 100 * 34).clamp(4.0, 34.0);
+                final isStart = _isBookingHour(f);
+
+                return Container(
+                  width: 76,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: isStart ? _T.greenBg : Colors.transparent,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: isStart ? _T.greenBorder : Colors.transparent,
+                    ),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(f.timeLabel,
+                          style: TextStyle(
+                              color: isStart ? _T.text1 : _T.text3,
+                              fontSize: 12,
+                              fontWeight:
+                                  isStart ? FontWeight.w800 : FontWeight.w500)),
+                      SizedBox(
+                        height: 16,
+                        child: Text(isStart ? '시작' : '',
+                            style: const TextStyle(
+                                color: _T.green,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w800)),
+                      ),
+                      Text(f.skyEmoji, style: const TextStyle(fontSize: 24)),
+                      const SizedBox(height: 8),
+                      SizedBox(
+                        height: 66,
+                        child: Align(
+                          alignment: Alignment.bottomCenter,
+                          child: Container(
+                            width: 8,
+                            height: barHeight,
+                            decoration: BoxDecoration(
+                              color: _T.green.withValues(alpha: 0.9),
+                              borderRadius: BorderRadius.circular(99),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text('${f.temp.toInt()}°',
+                          style: const TextStyle(
+                              color: _T.text1,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800)),
+                      const SizedBox(height: 8),
+                      SizedBox(
+                        height: 34,
+                        child: Align(
+                          alignment: Alignment.bottomCenter,
+                          child: Container(
+                            width: 22,
+                            height: rainHeight,
+                            decoration: BoxDecoration(
+                              color: f.rainProb >= 40 ? _T.yellow : _T.brand,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text('비 ${f.rainProb}%',
+                          style:
+                              const TextStyle(color: _T.text3, fontSize: 11)),
+                      const SizedBox(height: 2),
+                      Text('${f.windSpeed.toStringAsFixed(1)}m/s',
+                          style:
+                              const TextStyle(color: _T.text3, fontSize: 11)),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+        ],
       ),
     );
+  }
+
+  List<ForecastItem> _bookingWindowItems() {
+    final sorted = [...forecast]..sort((a, b) =>
+        (_forecastMinutes(a) ?? 0).compareTo(_forecastMinutes(b) ?? 0));
+    final bookingMinutes = bookingTime.hour * 60 + bookingTime.minute;
+    final windowStart = bookingMinutes - 60;
+    final windowEnd = bookingMinutes + (5 * 60);
+
+    final window = sorted.where((f) {
+      final minutes = _forecastMinutes(f);
+      if (minutes == null) return false;
+      return minutes >= windowStart && minutes <= windowEnd;
+    }).toList();
+
+    if (window.isNotEmpty) return window;
+
+    sorted.sort((a, b) {
+      final am = _forecastMinutes(a) ?? 0;
+      final bm = _forecastMinutes(b) ?? 0;
+      return (am - bookingMinutes).abs().compareTo((bm - bookingMinutes).abs());
+    });
+    return sorted.take(8).toList()
+      ..sort((a, b) =>
+          (_forecastMinutes(a) ?? 0).compareTo(_forecastMinutes(b) ?? 0));
+  }
+
+  bool _isBookingHour(ForecastItem item) {
+    final minutes = _forecastMinutes(item);
+    if (minutes == null) return false;
+    return (minutes ~/ 60) == bookingTime.hour;
+  }
+
+  int? _forecastMinutes(ForecastItem item) {
+    final raw = item.time.padLeft(4, '0');
+    if (raw.length < 4) return null;
+    final hour = int.tryParse(raw.substring(0, 2));
+    final minute = int.tryParse(raw.substring(2, 4));
+    if (hour == null || minute == null) return null;
+    return hour * 60 + minute;
+  }
+
+  String _bookingTimeLabel() {
+    final hour = bookingTime.hour.toString().padLeft(2, '0');
+    final minute = bookingTime.minute.toString().padLeft(2, '0');
+    return '$hour:$minute';
   }
 }

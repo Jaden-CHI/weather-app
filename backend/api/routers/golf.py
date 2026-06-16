@@ -36,6 +36,34 @@ def _filter_by_dday(forecasts: list[dict], dday: int) -> list[dict]:
     return sorted(filtered, key=lambda f: f.get("time", "")) or forecasts[:24]
 
 
+def _filter_by_round_window(
+    forecasts: list[dict],
+    start_hour: int | None,
+    *,
+    hours_before: int = 1,
+    hours_after: int = 5,
+) -> list[dict]:
+    """라운드 시작 시간 전후 예보만 추천 판단에 사용한다."""
+    if start_hour is None:
+        return forecasts
+
+    window_start = max(0, start_hour - hours_before)
+    window_end = min(23, start_hour + hours_after)
+    filtered = []
+    for forecast in forecasts:
+        time_value = str(forecast.get("time", ""))
+        if len(time_value) < 2:
+            continue
+        try:
+            hour = int(time_value[:2])
+        except ValueError:
+            continue
+        if window_start <= hour <= window_end:
+            filtered.append(forecast)
+
+    return sorted(filtered, key=lambda f: f.get("time", "")) or forecasts
+
+
 def _open_meteo_hourly_to_forecast(hourly_items: list[dict]) -> list[dict]:
     forecasts: list[dict] = []
     for item in hourly_items:
@@ -185,6 +213,12 @@ async def get_custom_course_weather(
     lon: float = Query(..., ge=-180, le=180),
     name: str = Query("커스텀 골프장", min_length=1),
     dday: int = Query(0, ge=0, le=7, description="D+n일 예보 (0=오늘)"),
+    start_hour: int | None = Query(
+        None,
+        ge=0,
+        le=23,
+        description="라운드 시작 시각 (0~23). 추천 판단 기준 시간",
+    ),
 ):
     """DB에 없는 골프장도 좌표만 있으면 날씨 예보를 반환한다."""
     try:
@@ -202,7 +236,13 @@ async def get_custom_course_weather(
         source = "MOCK_CUSTOM"
 
     use_mock = os.getenv("USE_MOCK_DATA", "true").lower() == "true"
-    recommendation = await get_golf_recommendation(name, forecasts, dday, use_mock)
+    recommendation_forecasts = _filter_by_round_window(forecasts, start_hour)
+    recommendation = await get_golf_recommendation(
+        name,
+        recommendation_forecasts,
+        dday,
+        use_mock,
+    )
 
     policy = get_sample_policy("DEFAULT")
     round_datetime = datetime.now() + timedelta(days=dday)
@@ -252,6 +292,12 @@ async def get_course_info(course_id: str, db: AsyncSession = Depends(get_db)):
 async def get_course_weather(
     course_id: str,
     dday: int = Query(0, ge=0, le=7, description="D+n일 예보 (0=오늘)"),
+    start_hour: int | None = Query(
+        None,
+        ge=0,
+        le=23,
+        description="라운드 시작 시각 (0~23). 추천 판단 기준 시간",
+    ),
     db: AsyncSession = Depends(get_db),
 ):
     course = await get_course(db, course_id)
@@ -280,8 +326,12 @@ async def get_course_weather(
     forecasts = hourly_forecasts or kma_forecasts
 
     use_mock = os.getenv("USE_MOCK_DATA", "true").lower() == "true"
+    recommendation_forecasts = _filter_by_round_window(
+        kma_forecasts or forecasts,
+        start_hour,
+    )
     recommendation = await get_golf_recommendation(
-        course["name"], kma_forecasts or forecasts, dday, use_mock
+        course["name"], recommendation_forecasts, dday, use_mock
     )
 
     # 취소 정책 — 골프존 제휴 코스는 실시간 조회, 아닌 코스는 DB/폴백

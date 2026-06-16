@@ -30,6 +30,7 @@ void backgroundDispatcher() {
           final weather = await apiService.getGolfWeather(
             courseId,
             dday: golfEvent.dday.clamp(0, 7),
+            startHour: golfEvent.startDate.hour,
           );
           if (weather != null) {
             await WidgetUpdater.updateGolfWidget(

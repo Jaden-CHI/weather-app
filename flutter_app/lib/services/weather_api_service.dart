@@ -159,8 +159,8 @@ class WeatherApiService {
       }
     }
 
-    suggestions.sort((a, b) => _courseMatchScore(keyword, a)
-        .compareTo(_courseMatchScore(keyword, b)));
+    suggestions.sort((a, b) =>
+        _courseMatchScore(keyword, a).compareTo(_courseMatchScore(keyword, b)));
     return suggestions.take(limit).toList();
   }
 
@@ -297,8 +297,8 @@ class WeatherApiService {
     String keyword,
     List<CourseSearchResult> results,
   ) {
-    results.sort((a, b) => _courseMatchScore(keyword, a)
-        .compareTo(_courseMatchScore(keyword, b)));
+    results.sort((a, b) =>
+        _courseMatchScore(keyword, a).compareTo(_courseMatchScore(keyword, b)));
     return results.first;
   }
 
@@ -321,12 +321,18 @@ class WeatherApiService {
   }
 
   /// 골프장 날씨 + 취소 권고 조회
-  Future<GolfWeatherData?> getGolfWeather(String courseId,
-      {int dday = 0}) async {
+  Future<GolfWeatherData?> getGolfWeather(
+    String courseId, {
+    int dday = 0,
+    int? startHour,
+  }) async {
     try {
       final resp = await _dio.get(
         '/api/v1/golf/courses/$courseId/weather',
-        queryParameters: {'dday': dday},
+        queryParameters: {
+          'dday': dday,
+          if (startHour != null) 'start_hour': startHour,
+        },
       );
       return GolfWeatherData.fromJson(resp.data as Map<String, dynamic>);
     } on DioException catch (e) {
@@ -344,6 +350,7 @@ class WeatherApiService {
     required double lng,
     required String courseName,
     int dday = 0,
+    int? startHour,
   }) async {
     try {
       final resp = await _dio.get(
@@ -353,6 +360,7 @@ class WeatherApiService {
           'lon': lng,
           'name': courseName,
           'dday': dday,
+          if (startHour != null) 'start_hour': startHour,
         },
       );
       return GolfWeatherData.fromJson(resp.data as Map<String, dynamic>);
