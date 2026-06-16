@@ -326,10 +326,7 @@ async def get_course_weather(
     forecasts = hourly_forecasts or kma_forecasts
 
     use_mock = os.getenv("USE_MOCK_DATA", "true").lower() == "true"
-    recommendation_forecasts = _filter_by_round_window(
-        kma_forecasts or forecasts,
-        start_hour,
-    )
+    recommendation_forecasts = _filter_by_round_window(forecasts, start_hour)
     recommendation = await get_golf_recommendation(
         course["name"], recommendation_forecasts, dday, use_mock
     )
