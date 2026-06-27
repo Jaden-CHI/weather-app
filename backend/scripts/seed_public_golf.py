@@ -294,9 +294,23 @@ _CITY_COORDS: dict[str, tuple[float, float]] = {
 }
 
 def address_to_coords(region: str, address: str) -> tuple[float, float] | None:
-    """주소 첫 번째 토큰(시/군)으로 좌표 조회, 없으면 None"""
-    # 시/군 이름 추출 (첫 번째 공백 기준)
-    city = address.split()[0] if address else ""
+    """주소의 시/군 토큰으로 좌표 조회, 없으면 권역 좌표로 폴백."""
+    province_tokens = {
+        "서울특별시", "부산광역시", "대구광역시", "인천광역시", "광주광역시",
+        "대전광역시", "울산광역시", "세종특별자치시", "경기도", "강원도",
+        "강원특별자치도", "충청북도", "충청남도", "전라북도", "전북특별자치도",
+        "전라남도", "경상북도", "경상남도", "제주특별자치도", "제주도", "제주",
+    }
+    tokens = address.split() if address else []
+    while tokens and tokens[0] in province_tokens:
+        tokens.pop(0)
+
+    city = tokens[0] if tokens else ""
+    if region == "경남" and city == "고성군":
+        city = "고성군경남"
+    if city == "연무읍":
+        city = "논산시"
+
     if city in _CITY_COORDS:
         return _CITY_COORDS[city]
     # 광역시/도 레벨 폴백
@@ -337,7 +351,16 @@ def transform_csv_item(idx: int, item: dict, golfzon_names: set) -> dict | None:
         "대전": "대전광역시", "세종": "세종특별자치시",
     }
     region = region_full_map.get(region_short, region_short)
-    address = f"{region} {address_partial}".strip()
+    full_prefixes = set(region_full_map.values())
+    prefix_aliases = {**region_full_map, "제주도": "제주특별자치도"}
+    first_token = address_partial.split()[0] if address_partial else ""
+    if first_token in prefix_aliases:
+        rest = " ".join(address_partial.split()[1:])
+        address = f"{prefix_aliases[first_token]} {rest}".strip()
+    elif any(address_partial.startswith(prefix) for prefix in full_prefixes):
+        address = address_partial
+    else:
+        address = f"{region} {address_partial}".strip()
 
     coords = address_to_coords(region_short, address_partial)
     if not coords:
@@ -350,6 +373,7 @@ def transform_csv_item(idx: int, item: dict, golfzon_names: set) -> dict | None:
         holes = 18
 
     course_type = (item.get("세부종류") or "").strip()
+    website = (item.get("URL") or "").strip() or None
     grid_x, grid_y = wgs84_to_grid(lat, lon)
 
     return {
@@ -364,7 +388,7 @@ def transform_csv_item(idx: int, item: dict, golfzon_names: set) -> dict | None:
         "grid_y": grid_y,
         "holes": holes,
         "phone": None,
-        "website": None,
+        "website": website,
         "public_data_id": None,
         "golfzon_id": None,
         "golfzon_url": None,
@@ -433,6 +457,14 @@ def load_golfzon_entries(path: str) -> list[dict]:
     return [c for c in courses if c.get("golfzon_linked")]
 
 
+def load_existing_courses(path: str) -> list[dict]:
+    if not os.path.exists(path):
+        return []
+    with open(path, encoding="utf-8") as f:
+        data = json.load(f)
+    return data if isinstance(data, list) else data.get("courses", [])
+
+
 # ── 이름 기반 중복 제거 ──────────────────────────────────────────
 def dedup_by_name(courses: list[dict]) -> list[dict]:
     seen: dict[str, dict] = {}
@@ -444,21 +476,48 @@ def dedup_by_name(courses: list[dict]) -> list[dict]:
 
 
 # ── course_id 재부여 ──────────────────────────────────────────────
-def reassign_ids(golfzon: list[dict], public: list[dict]) -> list[dict]:
+def reassign_ids(
+    golfzon: list[dict],
+    public: list[dict],
+    existing: list[dict] | None = None,
+) -> list[dict]:
     """
-    골프존 제휴: CC_001 ~ CC_00N
-    공공데이터:  CC_0(N+1) ~ CC_0XXX
+    기존 이름은 기존 course_id를 유지하고, 신규 코스만 다음 번호를 부여한다.
+    저장된 일정이 course_id를 들고 있으므로 재정렬로 ID가 밀리지 않게 한다.
     """
+    existing = existing or []
+    existing_ids_by_name = {
+        c.get("name", "").strip(): c.get("course_id")
+        for c in existing
+        if c.get("name") and c.get("course_id")
+    }
+    used_ids = {c.get("course_id") for c in existing if c.get("course_id")}
+    next_num = 1
+    for course_id in used_ids:
+        match = re.fullmatch(r"CC_(\d+)", str(course_id))
+        if match:
+            next_num = max(next_num, int(match.group(1)) + 1)
+
+    def assign_id(course: dict) -> dict:
+        nonlocal next_num
+        c = dict(course)
+        preserved = existing_ids_by_name.get(c["name"].strip())
+        if preserved:
+            c["course_id"] = preserved
+            used_ids.add(preserved)
+            return c
+        while f"CC_{next_num:03d}" in used_ids:
+            next_num += 1
+        c["course_id"] = f"CC_{next_num:03d}"
+        used_ids.add(c["course_id"])
+        next_num += 1
+        return c
+
     result = []
-    for i, c in enumerate(golfzon, start=1):
-        c = dict(c)
-        c["course_id"] = f"CC_{i:03d}"
-        result.append(c)
-    offset = len(golfzon) + 1
-    for i, c in enumerate(public, start=offset):
-        c = dict(c)
-        c["course_id"] = f"CC_{i:03d}"
-        result.append(c)
+    for c in golfzon:
+        result.append(assign_id(c))
+    for c in public:
+        result.append(assign_id(c))
     return result
 
 
@@ -488,8 +547,9 @@ async def main():
                 csv_path = os.path.join(data_dir, fname)
                 break
 
-    # 기존 골프존 제휴 항목 보존
-    golfzon_entries = load_golfzon_entries(out_path)
+    # 기존 항목은 course_id 안정성을 위해 보존/참조한다.
+    existing_courses = load_existing_courses(out_path)
+    golfzon_entries = [c for c in existing_courses if c.get("golfzon_linked")]
     golfzon_names = {c["name"] for c in golfzon_entries}
     print(f"기존 골프존 제휴 항목 보존: {len(golfzon_entries)}개")
 
@@ -526,7 +586,7 @@ async def main():
         return
 
     # course_id 재부여 후 병합 (골프존 먼저)
-    merged = reassign_ids(golfzon_entries, public_courses)
+    merged = reassign_ids(golfzon_entries, public_courses, existing_courses)
 
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(merged, f, ensure_ascii=False, indent=2)

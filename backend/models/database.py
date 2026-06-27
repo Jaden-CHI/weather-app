@@ -124,24 +124,51 @@ async def seed_data(session: AsyncSession) -> None:
     base = os.path.join(os.path.dirname(__file__), "..", "data")
 
     # 골프장
-    count = (await session.execute(text("SELECT COUNT(*) FROM golf_courses"))).scalar()
-    if count == 0:
-        with open(f"{base}/golf_courses.json", encoding="utf-8") as f:
-            courses = json.load(f)
-        for c in courses:
-            # 위경도 기반 격자 좌표 자동 계산
-            c["grid_x"], c["grid_y"] = _wgs84_to_grid(c["lat"], c["lon"])
-            await session.execute(
-                text("""
-                    INSERT INTO golf_courses
-                    (course_id, name, name_short, region, address, lat, lon, grid_x, grid_y, holes, phone, website)
-                    VALUES (:course_id,:name,:name_short,:region,:address,:lat,:lon,:grid_x,:grid_y,:holes,:phone,:website)
-                    ON CONFLICT (course_id) DO NOTHING
-                """),
-                {k: c.get(k) for k in ["course_id","name","name_short","region","address","lat","lon","grid_x","grid_y","holes","phone","website"]},
-            )
-        await session.commit()
-        print(f"[DB] 골프장 {len(courses)}개 시드 완료")
+    with open(f"{base}/golf_courses.json", encoding="utf-8") as f:
+        courses = json.load(f)
+    for c in courses:
+        # 위경도 기반 격자 좌표 자동 계산
+        c["grid_x"], c["grid_y"] = _wgs84_to_grid(c["lat"], c["lon"])
+        await session.execute(
+            text("""
+                INSERT INTO golf_courses
+                (course_id, name, name_short, region, address, lat, lon, grid_x, grid_y,
+                 holes, phone, website, public_data_id, golfzon_id, golfzon_url,
+                 golfzon_linked, data_source)
+                VALUES (:course_id,:name,:name_short,:region,:address,:lat,:lon,:grid_x,:grid_y,
+                        :holes,:phone,:website,:public_data_id,:golfzon_id,:golfzon_url,
+                        :golfzon_linked,:data_source)
+                ON CONFLICT (course_id) DO UPDATE SET
+                    name = EXCLUDED.name,
+                    name_short = EXCLUDED.name_short,
+                    region = EXCLUDED.region,
+                    address = EXCLUDED.address,
+                    lat = EXCLUDED.lat,
+                    lon = EXCLUDED.lon,
+                    grid_x = EXCLUDED.grid_x,
+                    grid_y = EXCLUDED.grid_y,
+                    holes = EXCLUDED.holes,
+                    phone = EXCLUDED.phone,
+                    website = EXCLUDED.website,
+                    public_data_id = EXCLUDED.public_data_id,
+                    golfzon_id = EXCLUDED.golfzon_id,
+                    golfzon_url = EXCLUDED.golfzon_url,
+                    golfzon_linked = EXCLUDED.golfzon_linked,
+                    data_source = EXCLUDED.data_source,
+                    updated_at = NOW()
+            """),
+            {
+                k: c.get(k)
+                for k in [
+                    "course_id", "name", "name_short", "region", "address",
+                    "lat", "lon", "grid_x", "grid_y", "holes", "phone",
+                    "website", "public_data_id", "golfzon_id", "golfzon_url",
+                    "golfzon_linked", "data_source",
+                ]
+            },
+        )
+    await session.commit()
+    print(f"[DB] 골프장 {len(courses)}개 동기화 완료")
 
     # 낚시 출항지
     count = (await session.execute(text("SELECT COUNT(*) FROM fishing_spots"))).scalar()
