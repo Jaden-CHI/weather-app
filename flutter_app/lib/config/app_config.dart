@@ -41,19 +41,38 @@ class AppConfig {
     return 'http://127.0.0.1:8000';
   }
 
+  static Uri courseMapUri({
+    required double lat,
+    required double lng,
+    required String label,
+    int zoom = 13,
+    String? restaurantsJson,
+  }) {
+    final base = apiBaseUrl.replaceAll(RegExp(r'/+$'), '');
+    return Uri.parse('$base/map/course').replace(queryParameters: {
+      'lat': lat.toString(),
+      'lng': lng.toString(),
+      'zoom': zoom.toString(),
+      'label': label,
+      if (restaurantsJson != null && restaurantsJson.isNotEmpty)
+        'restaurants': restaurantsJson,
+    });
+  }
+
   static Uri windyMapUri({
     required double lat,
     required double lng,
     required String label,
     int zoom = 13,
+    String? restaurantsJson,
   }) {
-    final base = apiBaseUrl.replaceAll(RegExp(r'/+$'), '');
-    return Uri.parse('$base/map/windy').replace(queryParameters: {
-      'lat': lat.toString(),
-      'lng': lng.toString(),
-      'zoom': zoom.toString(),
-      'label': label,
-    });
+    return courseMapUri(
+      lat: lat,
+      lng: lng,
+      label: label,
+      zoom: zoom,
+      restaurantsJson: restaurantsJson,
+    );
   }
 
   static String get weatherUnavailableMessage => '날씨 서버에 연결할 수 없습니다.\n'

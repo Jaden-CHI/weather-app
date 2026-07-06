@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
@@ -6,8 +8,10 @@ import 'package:webview_flutter/webview_flutter.dart';
 import '../config/app_config.dart';
 import '../utils/map_html.dart';
 import '../models/golf_event.dart';
+import '../models/restaurant.dart';
 import '../models/weather_data.dart';
 import '../services/app_schedule_service.dart';
+import '../services/restaurant_service.dart';
 import '../services/weather_api_service.dart';
 import '../services/background_service.dart';
 import '../services/widget_sync_service.dart';
@@ -1103,6 +1107,8 @@ class _MapScreenState extends ConsumerState<_MapScreen> {
   GolfEvent? _fallbackEvent;
   bool _isMapLoading = false;
   final Set<String> _resolvingLocationIds = {};
+  final Set<String> _loadingRestaurantEventIds = {};
+  final Map<String, List<_MapRestaurantMarker>> _restaurantMarkersByEventId = {};
 
   @override
   void initState() {
@@ -1133,7 +1139,8 @@ class _MapScreenState extends ConsumerState<_MapScreen> {
   Future<void> _loadMap(GolfEvent event) async {
     if (event.lat == null || event.lng == null) return;
 
-    final key = '${event.id}:${event.lat}:${event.lng}';
+    final markers = _restaurantMarkersByEventId[event.id] ?? const [];
+    final key = '${event.id}:${event.lat}:${event.lng}:${markers.length}';
     if (_loadedMapKey == key) return;
 
     setState(() {
@@ -1143,15 +1150,58 @@ class _MapScreenState extends ConsumerState<_MapScreen> {
     });
 
     await webViewController.loadRequest(
-      AppConfig.windyMapUri(
+      AppConfig.courseMapUri(
         lat: event.lat!,
         lng: event.lng!,
         label: event.courseName ?? event.location ?? event.title,
+        restaurantsJson: markers.isEmpty
+            ? null
+            : jsonEncode(markers.map((e) => e.toJson()).toList()),
       ),
     );
 
     if (mounted) {
       setState(() => _isMapLoading = false);
+    }
+
+    _warmNearbyRestaurants(event);
+  }
+
+  Future<void> _warmNearbyRestaurants(GolfEvent event) async {
+    if (event.lat == null || event.lng == null) return;
+    if (_restaurantMarkersByEventId.containsKey(event.id)) return;
+    if (_loadingRestaurantEventIds.contains(event.id)) return;
+
+    _loadingRestaurantEventIds.add(event.id);
+    try {
+      final result = await RestaurantService().searchRestaurants(
+        lat: event.lat!,
+        lng: event.lng!,
+        category: '추천',
+        courseAddress: event.address,
+        radius: 3200,
+      );
+
+      final markers = result.restaurants
+          .where((restaurant) => restaurant.lat != 0 && restaurant.lng != 0)
+          .take(4)
+          .map(_MapRestaurantMarker.fromRestaurant)
+          .toList(growable: false);
+
+      _restaurantMarkersByEventId[event.id] = markers;
+
+      if (!mounted || markers.isEmpty || _selectedEventId != event.id) {
+        return;
+      }
+
+      setState(() {
+        _loadedMapKey = null;
+      });
+      await _loadMap(event);
+    } catch (e) {
+      debugPrint('⚠️ nearby restaurants warmup failed: $e');
+    } finally {
+      _loadingRestaurantEventIds.remove(event.id);
     }
   }
 
@@ -1318,6 +1368,40 @@ class _MapScreenState extends ConsumerState<_MapScreen> {
       },
     );
   }
+}
+
+class _MapRestaurantMarker {
+  final String name;
+  final String category;
+  final double lat;
+  final double lng;
+  final double distanceKm;
+
+  const _MapRestaurantMarker({
+    required this.name,
+    required this.category,
+    required this.lat,
+    required this.lng,
+    required this.distanceKm,
+  });
+
+  factory _MapRestaurantMarker.fromRestaurant(Restaurant restaurant) {
+    return _MapRestaurantMarker(
+      name: restaurant.name,
+      category: restaurant.category,
+      lat: restaurant.lat,
+      lng: restaurant.lng,
+      distanceKm: restaurant.distance,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'name': name,
+        'category': category,
+        'lat': lat,
+        'lng': lng,
+        'distance_km': distanceKm,
+      };
 }
 
 class _MapMissingLocation extends StatelessWidget {
