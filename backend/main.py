@@ -69,7 +69,7 @@ async def root():
 async def course_map(
     lat: float = Query(...),
     lng: float = Query(...),
-    zoom: int = Query(13, ge=3, le=18),
+    zoom: int = Query(15, ge=3, le=18),
     label: str = Query("골프장 위치"),
 ):
     """골프장 지도 WebView용 HTML.
@@ -167,7 +167,7 @@ def _naver_map_html(
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
       transform: translate(-50%, -100%);
     }}
     .course-pin {{
@@ -191,12 +191,12 @@ def _naver_map_html(
     }}
     .course-label {{
       min-width: max-content;
-      padding: 7px 10px;
+      padding: 6px 10px;
       border-radius: 14px;
       background: rgba(11, 45, 38, 0.92);
       color: #F4FBF8;
       border: 1px solid rgba(247, 201, 72, 0.75);
-      font: 700 13px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font: 700 12px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       box-shadow: 0 8px 18px rgba(0, 0, 0, 0.25);
       white-space: nowrap;
     }}
