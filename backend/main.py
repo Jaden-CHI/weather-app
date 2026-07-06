@@ -71,6 +71,7 @@ async def course_map(
     lng: float = Query(...),
     zoom: int = Query(15, ge=3, le=18),
     label: str = Query("골프장 위치"),
+    restaurants: str | None = Query(None),
 ):
     """골프장 지도 WebView용 HTML.
 
@@ -81,6 +82,7 @@ async def course_map(
     marker_label = (label or "골프장 위치")[:80]
     safe_label = json.dumps(marker_label)
     safe_label_html = json.dumps(html.escape(marker_label))
+    restaurant_markers = _parse_restaurant_markers(restaurants)
 
     if not client_id:
         return HTMLResponse(_leaflet_map_html(lat, lng, zoom, safe_label))
@@ -92,7 +94,53 @@ async def course_map(
         client_id_attr=html.escape(client_id, quote=True),
         safe_label=safe_label,
         safe_label_html=safe_label_html,
+        restaurant_markers_json=json.dumps(restaurant_markers, ensure_ascii=False),
     ))
+
+
+def _parse_restaurant_markers(raw: str | None) -> list[dict[str, object]]:
+    if not raw:
+        return []
+    try:
+        payload = json.loads(raw)
+    except json.JSONDecodeError:
+        return []
+
+    if not isinstance(payload, list):
+        return []
+
+    markers: list[dict[str, object]] = []
+    for item in payload[:6]:
+        if not isinstance(item, dict):
+            continue
+        name = str(item.get("name") or "").strip()
+        category = str(item.get("category") or "").strip()
+        distance_km = item.get("distance_km")
+        lat = item.get("lat")
+        lng = item.get("lng")
+
+        try:
+            lat_value = float(lat)
+            lng_value = float(lng)
+        except (TypeError, ValueError):
+            continue
+
+        try:
+            distance_value = round(float(distance_km), 1)
+        except (TypeError, ValueError):
+            distance_value = None
+
+        if not name:
+            continue
+
+        markers.append({
+            "name": name[:40],
+            "category": category[:24],
+            "distance_km": distance_value,
+            "lat": lat_value,
+            "lng": lng_value,
+        })
+    return markers
 
 
 def _naver_map_html(
@@ -103,6 +151,7 @@ def _naver_map_html(
     client_id_attr: str,
     safe_label: str,
     safe_label_html: str,
+    restaurant_markers_json: str,
 ) -> str:
     return f"""
 <!DOCTYPE html>
@@ -215,6 +264,34 @@ def _naver_map_html(
       border-radius: 14px !important;
       overflow: hidden;
     }}
+    .restaurant-pin {{
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #2E7D6B;
+      border: 3px solid #F4FBF8;
+      box-shadow: 0 6px 14px rgba(0, 0, 0, 0.25);
+    }}
+    .restaurant-info {{
+      min-width: 148px;
+      max-width: 220px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      background: rgba(11, 45, 38, 0.96);
+      color: #F4FBF8;
+      border: 1px solid rgba(46, 125, 107, 0.75);
+      font: 600 12px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      line-height: 1.35;
+    }}
+    .restaurant-info strong {{
+      display: block;
+      font-size: 13px;
+      font-weight: 800;
+      margin-bottom: 3px;
+    }}
+    .restaurant-info span {{
+      color: rgba(244, 251, 248, 0.72);
+    }}
   </style>
 </head>
 <body>
@@ -235,6 +312,7 @@ def _naver_map_html(
     const position = new naver.maps.LatLng({lat}, {lng});
     const label = {safe_label};
     const labelHtml = {safe_label_html};
+    const restaurants = {restaurant_markers_json};
     const map = new naver.maps.Map('map', {{
       center: position,
       zoom: {zoom},
@@ -270,6 +348,57 @@ def _naver_map_html(
         `,
         anchor: new naver.maps.Point(14, 48)
       }}
+    }});
+
+    let openInfoWindow = null;
+
+    function escapeHtml(value) {{
+      return String(value ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
+    }}
+
+    restaurants.forEach((item) => {{
+      const markerPosition = new naver.maps.LatLng(item.lat, item.lng);
+      const marker = new naver.maps.Marker({{
+        position: markerPosition,
+        map: map,
+        title: item.name,
+        icon: {{
+          content: '<div class="restaurant-pin" aria-label="추천 맛집"></div>',
+          anchor: new naver.maps.Point(9, 9)
+        }}
+      }});
+
+      const categoryText = item.category ? escapeHtml(item.category) : '추천 맛집';
+      const distanceText = typeof item.distance_km === 'number'
+        ? ` · ${{
+            item.distance_km.toFixed(1)
+          }}km`
+        : '';
+      const infoWindow = new naver.maps.InfoWindow({{
+        content: `
+          <div class="restaurant-info">
+            <strong>${{escapeHtml(item.name)}}</strong>
+            <span>${{categoryText}}${{distanceText}}</span>
+          </div>
+        `,
+        borderWidth: 0,
+        backgroundColor: 'transparent',
+        disableAnchor: true,
+        pixelOffset: new naver.maps.Point(0, -6)
+      }});
+
+      naver.maps.Event.addListener(marker, 'click', () => {{
+        if (openInfoWindow) {{
+          openInfoWindow.close();
+        }}
+        infoWindow.open(map, marker);
+        openInfoWindow = infoWindow;
+      }});
     }});
 
     const buttons = Array.from(document.querySelectorAll('[data-map-type]'));
