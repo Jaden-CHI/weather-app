@@ -288,6 +288,51 @@ async def get_course_info(course_id: str, db: AsyncSession = Depends(get_db)):
     return course
 
 
+@router.get("/courses/{course_id}/weather/status")
+async def get_course_weather_status(
+    course_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """코스별 날씨 캐시 상태를 확인한다.
+
+    앱/운영 QA에서 "DB에는 있는데 날씨가 안 뜨는" 상황을 빠르게 구분하기 위한
+    가벼운 진단 엔드포인트다.
+    """
+    course = await get_course(db, course_id)
+    if not course:
+        raise HTTPException(404, "골프장을 찾을 수 없습니다")
+
+    cache_key = f"weather:grid:{course['grid_x']}:{course['grid_y']}"
+    cached = None
+    redis_error = None
+    r = _get_redis()
+    try:
+        cached = await r.get(cache_key)
+    except Exception as exc:
+        redis_error = str(exc)
+    finally:
+        await r.aclose()
+
+    payload = {}
+    if cached:
+        try:
+            payload = json.loads(cached)
+        except json.JSONDecodeError:
+            payload = {}
+
+    return {
+        "course_id": course_id,
+        "course_name": course["name"],
+        "grid_x": course["grid_x"],
+        "grid_y": course["grid_y"],
+        "cache_key": cache_key,
+        "cached": bool(cached),
+        "source": payload.get("source"),
+        "last_updated": payload.get("updated_at"),
+        "redis_error": redis_error,
+    }
+
+
 @router.get("/courses/{course_id}/weather")
 async def get_course_weather(
     course_id: str,
