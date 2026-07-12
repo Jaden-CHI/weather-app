@@ -320,6 +320,15 @@ async def get_course_weather_status(
         except json.JSONDecodeError:
             payload = {}
 
+    source = payload.get("source")
+    effective_source = source
+    if (
+        source == "MOCK"
+        and course.get("lat") is not None
+        and course.get("lon") is not None
+    ):
+        effective_source = "OPEN_METEO_ON_DEMAND"
+
     return {
         "course_id": course_id,
         "course_name": course["name"],
@@ -327,7 +336,8 @@ async def get_course_weather_status(
         "grid_y": course["grid_y"],
         "cache_key": cache_key,
         "cached": bool(cached),
-        "source": payload.get("source"),
+        "source": source,
+        "effective_source": effective_source,
         "last_updated": payload.get("updated_at"),
         "redis_error": redis_error,
     }
