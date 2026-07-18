@@ -1,4 +1,4 @@
-package com.weatherapp.weather_app
+package com.golfwindy.app
 
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider

@@ -25,7 +25,7 @@ if (keyPropertiesFile.exists()) {
 }
 
 android {
-    namespace "com.weatherapp.weather_app"
+    namespace "com.golfwindy.app"
     compileSdk 36
     ndkVersion "28.2.13676358"
 
@@ -53,9 +53,9 @@ android {
     }
 
     defaultConfig {
-        applicationId "com.weatherapp.weather_app"
+        applicationId "com.golfwindy.app"
         minSdkVersion flutter.minSdkVersion
-        targetSdkVersion 34
+        targetSdkVersion 35
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
     }

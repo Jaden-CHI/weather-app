@@ -10,6 +10,8 @@ class SettingsService {
   static const _keyNotifyHoursBefore = 'setting_notify_hours_before';
   static const _keyFavoriteCourses = 'setting_favorite_courses';
   static const _keyFavoriteSpots = 'setting_favorite_spots';
+  static const _keyHomeTutorialSeen = 'setting_home_tutorial_seen';
+  static const _keyThemeId = 'setting_theme_id';
 
   Future<int> getRainThreshold() async {
     final prefs = await SharedPreferences.getInstance();
@@ -81,5 +83,25 @@ class SettingsService {
     final list = prefs.getStringList(_keyFavoriteSpots) ?? [];
     list.remove(spotId);
     await prefs.setStringList(_keyFavoriteSpots, list);
+  }
+
+  Future<String?> getThemeId() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_keyThemeId);
+  }
+
+  Future<void> setThemeId(String id) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyThemeId, id);
+  }
+
+  Future<bool> hasSeenHomeTutorial() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_keyHomeTutorialSeen) ?? false;
+  }
+
+  Future<void> setHomeTutorialSeen(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyHomeTutorialSeen, value);
   }
 }

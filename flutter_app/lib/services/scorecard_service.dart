@@ -6,6 +6,18 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/golf_event.dart';
 import '../models/golf_score.dart';
 
+class CompanionNameSuggestion {
+  final String name;
+  final int roundCount;
+  final DateTime lastPlayedAt;
+
+  const CompanionNameSuggestion({
+    required this.name,
+    required this.roundCount,
+    required this.lastPlayedAt,
+  });
+}
+
 class ScorecardService {
   ScorecardService._();
   static final instance = ScorecardService._();
@@ -50,11 +62,74 @@ class ScorecardService {
     await _saveScores(scores);
   }
 
+  Future<Map<String, Map<String, dynamic>>> exportScores() {
+    return _loadScores();
+  }
+
+  Future<void> importScores(
+    Map<String, Map<String, dynamic>> incoming,
+  ) async {
+    if (incoming.isEmpty) return;
+
+    final scores = await _loadScores();
+    incoming.forEach((scheduleId, scoreData) {
+      final current = scores[scheduleId];
+      if (current == null || _isNewer(scoreData, current)) {
+        scores[scheduleId] = Map<String, dynamic>.from(scoreData);
+      }
+    });
+    await _saveScores(scores);
+  }
+
   Future<GolfRoundScore?> getLifeBest() async {
     final scores = await getAllScores();
     if (scores.isEmpty) return null;
     scores.sort((a, b) => a.totalScore.compareTo(b.totalScore));
     return scores.first;
+  }
+
+  Future<List<CompanionNameSuggestion>> getRecommendedCompanionNames({
+    int? limit,
+  }) async {
+    final scores = await getAllScores();
+    final aggregated = <String, CompanionNameSuggestion>{};
+
+    for (final score in scores) {
+      for (final companion in score.companions) {
+        final name = companion.name.trim();
+        if (name.isEmpty) continue;
+
+        final existing = aggregated[name];
+        if (existing == null) {
+          aggregated[name] = CompanionNameSuggestion(
+            name: name,
+            roundCount: 1,
+            lastPlayedAt: score.playedAt,
+          );
+          continue;
+        }
+
+        aggregated[name] = CompanionNameSuggestion(
+          name: name,
+          roundCount: existing.roundCount + 1,
+          lastPlayedAt: score.playedAt.isAfter(existing.lastPlayedAt)
+              ? score.playedAt
+              : existing.lastPlayedAt,
+        );
+      }
+    }
+
+    final suggestions = aggregated.values.toList(growable: false)
+      ..sort((a, b) {
+        final roundCompare = b.roundCount.compareTo(a.roundCount);
+        if (roundCompare != 0) return roundCompare;
+        return b.lastPlayedAt.compareTo(a.lastPlayedAt);
+      });
+
+    if (limit == null || suggestions.length <= limit) {
+      return suggestions;
+    }
+    return suggestions.take(limit).toList(growable: false);
   }
 
   Future<Map<String, Map<String, dynamic>>> _loadScores() async {
@@ -73,5 +148,11 @@ class ScorecardService {
   ) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_scoresKey, jsonEncode(scores));
+  }
+
+  bool _isNewer(Map<String, dynamic> incoming, Map<String, dynamic> current) {
+    final incomingUpdatedAt = (incoming['updatedAt'] as num?)?.toInt() ?? 0;
+    final currentUpdatedAt = (current['updatedAt'] as num?)?.toInt() ?? 0;
+    return incomingUpdatedAt >= currentUpdatedAt;
   }
 }

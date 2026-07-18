@@ -24,7 +24,7 @@ class ShareService {
     };
 
     final lines = <String>[
-      '⛳ 켜자마자 날씨 — 골프 날씨 공유',
+      '⛳ Golf Windy — 라운드 날씨 공유',
       '',
       '$statusEmoji ${data.courseName} (${event.ddayLabel})',
       '📅 ${_formatDate(event.startDate)}',
@@ -57,16 +57,49 @@ class ShareService {
 
     lines.add('');
     lines.add('─────────────────');
-    lines.add('켜자마자 날씨 앱으로 확인하세요');
+    lines.add('Golf Windy에서 라운드 일정과 날씨를 확인하세요.');
 
     final text = lines.join('\n');
     final box = context.findRenderObject() as RenderBox?;
     await Share.share(
       text,
       subject: '${data.courseName} 날씨 — ${rec.message}',
-      sharePositionOrigin: box != null
-          ? box.localToGlobal(Offset.zero) & box.size
-          : null,
+      sharePositionOrigin:
+          box != null ? box.localToGlobal(Offset.zero) & box.size : null,
+    );
+  }
+
+  /// 날씨가 아직 준비되지 않은 일정도 카카오톡/문자 공유 시트로 공유
+  Future<void> shareGolfSchedule({
+    required BuildContext context,
+    required GolfEvent event,
+    GolfWeatherData? data,
+  }) async {
+    if (data != null) {
+      return shareGolfWeather(context: context, event: event, data: data);
+    }
+
+    final courseName = event.courseName ?? event.location ?? event.title;
+    final lines = <String>[
+      '⛳ Golf Windy — 라운드 일정 공유',
+      '',
+      '$courseName (${event.ddayLabel})',
+      '📅 ${_formatDate(event.startDate)}',
+      if ((event.address ?? '').trim().isNotEmpty)
+        '📍 ${event.address!.trim()}',
+      '',
+      '날씨 정보는 아직 준비 중입니다. Golf Windy에서 라운드 전 날씨와 취소 권고를 다시 확인해 주세요.',
+      '',
+      '─────────────────',
+      'Golf Windy에서 라운드 일정과 날씨를 확인하세요.',
+    ];
+
+    final box = context.findRenderObject() as RenderBox?;
+    await Share.share(
+      lines.join('\n'),
+      subject: '$courseName 라운드 일정',
+      sharePositionOrigin:
+          box != null ? box.localToGlobal(Offset.zero) & box.size : null,
     );
   }
 

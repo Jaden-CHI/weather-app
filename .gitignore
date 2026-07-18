@@ -3,6 +3,7 @@
 *.env
 google-services.json
 GoogleService-Info.plist
+GoogleService-Info-*.plist
 firebase_service_account.json
 
 # Android 서명 키 (절대 커밋 금지)
@@ -19,6 +20,8 @@ venv/
 
 # Flutter / Dart
 flutter_app/build/
+flutter_app/ios/build/
+flutter_app/.claude/
 flutter_app/.dart_tool/
 flutter_app/.flutter-plugins
 flutter_app/.flutter-plugins-dependencies

@@ -9,6 +9,7 @@ class CourseSearchResult {
   final String courseId;
   final String name;
   final String? nameShort;
+  final String? address;
   final double? lat;
   final double? lng;
 
@@ -16,6 +17,7 @@ class CourseSearchResult {
     required this.courseId,
     required this.name,
     this.nameShort,
+    this.address,
     this.lat,
     this.lng,
   });
@@ -25,6 +27,9 @@ class CourseSearchResult {
       courseId: json['course_id'] as String,
       name: json['name'] as String? ?? '',
       nameShort: json['name_short'] as String?,
+      address: json['address'] as String? ??
+          json['road_address'] as String? ??
+          json['address_name'] as String?,
       lat: _asDouble(json['lat']),
       lng: _asDouble(json['lon'] ?? json['lng']),
     );
@@ -40,8 +45,48 @@ class CourseSearchResult {
 class LocationSearchResult {
   final double lat;
   final double lng;
+  final String? address;
 
-  const LocationSearchResult({required this.lat, required this.lng});
+  const LocationSearchResult({
+    required this.lat,
+    required this.lng,
+    this.address,
+  });
+}
+
+class WeatherCacheStatus {
+  final String courseId;
+  final String courseName;
+  final int? gridX;
+  final int? gridY;
+  final bool cached;
+  final String? source;
+  final String? effectiveSource;
+  final String? lastUpdated;
+
+  const WeatherCacheStatus({
+    required this.courseId,
+    required this.courseName,
+    required this.cached,
+    this.gridX,
+    this.gridY,
+    this.source,
+    this.effectiveSource,
+    this.lastUpdated,
+  });
+
+  factory WeatherCacheStatus.fromJson(Map<String, dynamic> json) {
+    return WeatherCacheStatus(
+      courseId: json['course_id'] as String? ?? '',
+      courseName: json['course_name'] as String? ?? '',
+      gridX: json['grid_x'] as int?,
+      gridY: json['grid_y'] as int?,
+      cached: json['cached'] as bool? ?? false,
+      source: json['source'] as String?,
+      effectiveSource: json['effective_source'] as String?,
+      lastUpdated: json['last_updated'] as String?,
+    );
+  }
 }
 
 /// 백엔드 FastAPI 서버와 통신하는 서비스
@@ -58,6 +103,23 @@ class WeatherApiService {
     '남서울': 'CC_042',
     '남서울CC': 'CC_042',
     '남서울컨트리클럽': 'CC_042',
+    '드림파크': 'CC_171',
+    '드림파크CC': 'CC_171',
+    '드림파크GC': 'CC_171',
+    '드림파크골프장': 'CC_171',
+    '오렌지듄스': 'CC_172',
+    '오렌지듄스CC': 'CC_172',
+    '오렌지듄스GC': 'CC_172',
+    '오렌지듄스골프클럽': 'CC_172',
+    '영종오렌지': 'CC_174',
+    '영종오렌지CC': 'CC_174',
+    '영종오렌지GC': 'CC_174',
+    '영종오렌지골프장': 'CC_174',
+    '남한강에스파크': 'CC_521',
+    '남한강에스파크CC': 'CC_521',
+    '남한강에스파크GC': 'CC_521',
+    '남한강S파크': 'CC_521',
+    '남한강S파크CC': 'CC_521',
   };
 
   Dio get _dio => Dio(
@@ -68,6 +130,43 @@ class WeatherApiService {
           headers: {'Content-Type': 'application/json'},
         ),
       )..interceptors.add(_CacheInterceptor());
+
+  Dio _dioForBaseUrl(String baseUrl) => Dio(
+        BaseOptions(
+          baseUrl: baseUrl,
+          connectTimeout: const Duration(seconds: 8),
+          receiveTimeout: const Duration(seconds: 12),
+          headers: {'Content-Type': 'application/json'},
+        ),
+      )..interceptors.add(_CacheInterceptor());
+
+  Future<List<CourseSearchResult>> _fetchCourseSearchResults(String q) async {
+    Future<List<CourseSearchResult>> request(Dio dio) async {
+      final resp = await dio.get(
+        '/api/v1/golf/courses/search',
+        queryParameters: {'q': q},
+      );
+      return (resp.data['results'] as List<dynamic>? ?? [])
+          .whereType<Map>()
+          .map((e) => CourseSearchResult.fromJson(
+                Map<String, dynamic>.from(e),
+              ))
+          .toList();
+    }
+
+    try {
+      return await request(_dio);
+    } on DioException catch (e) {
+      final currentBase = AppConfig.apiBaseUrl.replaceAll(RegExp(r'/+$'), '');
+      final productionBase =
+          AppConfig.productionBaseUrl.replaceAll(RegExp(r'/+$'), '');
+      if (currentBase == productionBase) rethrow;
+      debugPrint(
+        '⚠️ course search failed on $currentBase for "$q"; retrying production: ${e.message}',
+      );
+      return request(_dioForBaseUrl(AppConfig.productionBaseUrl));
+    }
+  }
 
   /// 골프장 이름 검색 → course_id 반환
   Future<String?> searchCourseId(String keyword) async {
@@ -91,16 +190,7 @@ class WeatherApiService {
 
     for (final q in candidates) {
       try {
-        final resp = await _dio.get(
-          '/api/v1/golf/courses/search',
-          queryParameters: {'q': q},
-        );
-        final results = (resp.data['results'] as List<dynamic>? ?? [])
-            .whereType<Map>()
-            .map((e) => CourseSearchResult.fromJson(
-                  Map<String, dynamic>.from(e),
-                ))
-            .toList();
+        final results = await _fetchCourseSearchResults(q);
         if (results.isEmpty) continue;
 
         final best = _bestCourseMatch(keyword, results);
@@ -132,16 +222,7 @@ class WeatherApiService {
 
     for (final q in candidates) {
       try {
-        final resp = await _dio.get(
-          '/api/v1/golf/courses/search',
-          queryParameters: {'q': q},
-        );
-        final results = (resp.data['results'] as List<dynamic>? ?? [])
-            .whereType<Map>()
-            .map((e) => CourseSearchResult.fromJson(
-                  Map<String, dynamic>.from(e),
-                ))
-            .toList();
+        final results = await _fetchCourseSearchResults(q);
 
         for (final result in results) {
           if (seen.add(result.courseId)) {
@@ -196,7 +277,11 @@ class WeatherApiService {
       final lat = double.tryParse(first['lat']?.toString() ?? '');
       final lng = double.tryParse(first['lon']?.toString() ?? '');
       if (lat == null || lng == null) return null;
-      return LocationSearchResult(lat: lat, lng: lng);
+      return LocationSearchResult(
+        lat: lat,
+        lng: lng,
+        address: first['display_name']?.toString(),
+      );
     } catch (e) {
       debugPrint('⚠️ location geocode failed for "$trimmed": $e');
       return null;
@@ -234,7 +319,13 @@ class WeatherApiService {
         final lng = double.tryParse(first['x']?.toString() ?? '');
         if (lat != null && lng != null) {
           debugPrint('✅ Kakao geocode matched: $query → $lat,$lng');
-          return LocationSearchResult(lat: lat, lng: lng);
+          return LocationSearchResult(
+            lat: lat,
+            lng: lng,
+            address: first['road_address_name']?.toString().isNotEmpty == true
+                ? first['road_address_name']?.toString()
+                : first['address_name']?.toString(),
+          );
         }
       } catch (e) {
         debugPrint('⚠️ Kakao geocode failed for "$query" ($path): $e');
@@ -262,6 +353,41 @@ class WeatherApiService {
     for (final query in queries.toSet()) {
       final result = await geocodeLocation(query);
       if (result != null) return result;
+    }
+
+    return null;
+  }
+
+  Future<LocationSearchResult?> resolveTrustedCourseLocation({
+    required String courseName,
+    String? address,
+    double? currentLat,
+    double? currentLng,
+  }) async {
+    final matchedCourse = await searchCourse(courseName);
+
+    if (matchedCourse?.lat != null && matchedCourse?.lng != null) {
+      return LocationSearchResult(
+        lat: matchedCourse!.lat!,
+        lng: matchedCourse.lng!,
+        address: matchedCourse.address ?? address,
+      );
+    }
+
+    final geocoded = await geocodeBestEffort(
+      courseName: matchedCourse?.name ?? courseName,
+      address: address ?? matchedCourse?.address,
+    );
+    if (geocoded != null) {
+      return geocoded;
+    }
+
+    if (currentLat != null && currentLng != null) {
+      return LocationSearchResult(
+        lat: currentLat,
+        lng: currentLng,
+        address: address ?? matchedCourse?.address,
+      );
     }
 
     return null;
@@ -341,6 +467,17 @@ class WeatherApiService {
         return null;
       }
       rethrow;
+    }
+  }
+
+  Future<WeatherCacheStatus?> getWeatherCacheStatus(String courseId) async {
+    try {
+      final resp =
+          await _dio.get('/api/v1/golf/courses/$courseId/weather/status');
+      return WeatherCacheStatus.fromJson(resp.data as Map<String, dynamic>);
+    } catch (e) {
+      debugPrint('⚠️ weather cache status failed for "$courseId": $e');
+      return null;
     }
   }
 

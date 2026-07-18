@@ -1,7 +1,7 @@
 name: weather_app
 description: Golf Windy - 골프장 날씨 가이드
 publish_to: none
-version: 1.0.6+11
+version: 1.1.0+24
 
 environment:
   sdk: ">=3.3.0 <4.0.0"
@@ -36,6 +36,9 @@ dependencies:
   # ── 위치 ─────────────────────────────────────
   geolocator: ^11.0.0
 
+  # ── 카메라 / 이미지 선택 ─────────────────────
+  image_picker: ^1.1.2
+
   # ── 지도 ─────────────────────────────────────
   webview_flutter: ^4.4.2
 
@@ -54,7 +57,6 @@ dependencies:
   intl: ^0.19.0
   shimmer: ^3.0.0
   lottie: ^3.1.0
-
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -67,3 +69,12 @@ flutter:
   assets:
     - assets/lottie/
     - assets/images/
+  fonts:
+    - family: SpaceGrotesk
+      fonts:
+        - asset: assets/fonts/SpaceGrotesk-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/SpaceGrotesk-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/SpaceGrotesk-Bold.ttf
+          weight: 700

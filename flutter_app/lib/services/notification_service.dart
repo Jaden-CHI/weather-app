@@ -121,9 +121,9 @@ class NotificationService {
 
     final status = message.data['status'] ?? 'GREEN';
     final color = switch (status) {
-      'RED'    => const Color(0xFFF44336).value,
-      'YELLOW' => const Color(0xFFFFC107).value,
-      _        => const Color(0xFF4CAF50).value,
+      'RED' => const Color(0xFFF44336).toARGB32(),
+      'YELLOW' => const Color(0xFFFFC107).toARGB32(),
+      _ => const Color(0xFF4CAF50).toARGB32(),
     };
 
     await _localNotif.show(

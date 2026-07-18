@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../config/app_theme.dart';
 import '../models/golf_event.dart';
 import '../models/weather_data.dart';
 import '../config/app_config.dart';
@@ -7,31 +8,10 @@ import '../services/notification_service.dart';
 import '../services/share_service.dart';
 import '../services/weather_api_service.dart';
 import '../services/app_schedule_service.dart';
+import '../widgets/wx_icon.dart';
 import 'add_schedule_screen.dart';
 import 'restaurant_screen.dart';
 import 'scorecard_screen.dart';
-
-class _T {
-  static const bgDeep = Color(0xFF0E2A24);
-  static const bgElev1 = Color(0xFF143630);
-  static const bgElev2 = Color(0xFF1B4332);
-  static const brand = Color(0xFF2E7D6B);
-
-  static const green = Color(0xFF4ADE80);
-  static const greenBg = Color(0x254ADE80);
-  static const greenBorder = Color(0x664ADE80);
-  static const yellow = Color(0xFFFFC107);
-  static const yellowBg = Color(0x28FFC107);
-  static const yellowBorder = Color(0x72FFC107);
-  static const red = Color(0xFFFF6B6B);
-  static const redBg = Color(0x25FF6B6B);
-  static const redBorder = Color(0x66FF6B6B);
-
-  static const text1 = Color(0xFFF4FBF8);
-  static const text2 = Color(0xB3F4FBF8);
-  static const text3 = Color(0x73F4FBF8);
-  static const divider = Color(0x14F4FBF8);
-}
 
 class _St {
   final Color color, bg, border;
@@ -43,18 +23,20 @@ class _St {
       required this.label});
 }
 
-_St _statusOf(String s) => switch (s) {
-      'GREEN' => const _St(
-          color: _T.green, bg: _T.greenBg, border: _T.greenBorder, label: '최적'),
-      'YELLOW' => const _St(
-          color: _T.yellow,
-          bg: _T.yellowBg,
-          border: _T.yellowBorder,
-          label: '주의'),
-      'RED' => const _St(
-          color: _T.red, bg: _T.redBg, border: _T.redBorder, label: '취소권장'),
-      _ => const _St(
-          color: _T.text3, bg: _T.divider, border: _T.divider, label: '정보없음'),
+_St _statusOf(GwTheme t, String s) => switch (s) {
+      'GREEN' => _St(
+          color: t.success,
+          bg: t.successBg,
+          border: t.successBorder,
+          label: '최적'),
+      'YELLOW' => _St(
+          color: t.warn, bg: t.warnBg, border: t.warnBorder, label: '주의'),
+      'RED' => _St(
+          color: t.danger,
+          bg: t.dangerBg,
+          border: t.dangerBorder,
+          label: '취소권장'),
+      _ => _St(color: t.fg3, bg: t.line, border: t.line, label: '정보없음'),
     };
 
 class EventDetailScreen extends StatefulWidget {
@@ -142,10 +124,11 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   }
 
   Future<void> _share() async {
-    if (_golfData != null) {
-      await ShareService.instance.shareGolfWeather(
-          context: context, event: widget.golfEvent, data: _golfData!);
-    }
+    await ShareService.instance.shareGolfSchedule(
+      context: context,
+      event: widget.golfEvent,
+      data: _golfData,
+    );
   }
 
   Future<void> _edit() async {
@@ -169,21 +152,21 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   }
 
   Future<void> _delete() async {
+    final t = GwTheme.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: _T.bgElev1,
-        title: const Text('일정 삭제', style: TextStyle(color: _T.text1)),
-        content:
-            const Text('이 일정을 삭제하시겠습니까?', style: TextStyle(color: _T.text2)),
+        backgroundColor: t.surface,
+        title: Text('일정 삭제', style: TextStyle(color: t.fg)),
+        content: Text('이 일정을 삭제하시겠습니까?', style: TextStyle(color: t.fg2)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('취소', style: TextStyle(color: _T.text2)),
+            child: Text('취소', style: TextStyle(color: t.fg2)),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('삭제', style: TextStyle(color: _T.red)),
+            child: Text('삭제', style: TextStyle(color: t.danger)),
           ),
         ],
       ),
@@ -214,9 +197,10 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
 
     final granted = await _notif.requestPermissionAndRegister();
     if (!granted) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('알림 권한이 필요합니다. 설정에서 허용해주세요.')));
+      }
       setState(() => _subLoading = false);
       return;
     }
@@ -227,9 +211,10 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     final eventTitle = event.courseName ?? event.title;
 
     if (courseId.isEmpty) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('골프장 정보를 찾을 수 없어 구독할 수 없습니다.')));
+      }
       setState(() => _subLoading = false);
       return;
     }
@@ -254,14 +239,15 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final t = GwTheme.of(context);
     return Scaffold(
-      backgroundColor: _T.bgDeep,
+      backgroundColor: t.bg,
       body: SafeArea(
         child: Column(children: [
           _DetailNav(
             title: _title,
             onBack: () => Navigator.of(context).pop(),
-            onShare: (!_loading && _golfData != null) ? _share : null,
+            onShare: !_loading ? _share : null,
             onNotif: (!_loading &&
                     _golfData != null &&
                     _golfData!.courseId != 'CUSTOM')
@@ -274,8 +260,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
           ),
           Expanded(
             child: _loading
-                ? const Center(
-                    child: CircularProgressIndicator(color: _T.brand))
+                ? Center(child: CircularProgressIndicator(color: t.accent))
                 : _error != null
                     ? _ErrorBody(message: _error!)
                     : _GolfDetailBody(
@@ -313,30 +298,31 @@ class _DetailNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = GwTheme.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
       child: Row(children: [
         _NavBtn(
             onTap: onBack,
-            child: const Text('‹',
-                style: TextStyle(color: _T.text1, fontSize: 24, height: 1))),
+            child: Text('‹',
+                style: TextStyle(color: t.fg, fontSize: 24, height: 1))),
         const SizedBox(width: 12),
         Expanded(
             child: Text(title,
-                style: const TextStyle(
-                    color: _T.text1, fontSize: 17, fontWeight: FontWeight.w700),
+                style: TextStyle(
+                    color: t.fg, fontSize: 17, fontWeight: FontWeight.w700),
                 overflow: TextOverflow.ellipsis)),
         if (onShare != null) ...[
           const SizedBox(width: 8),
           _NavBtn(
               onTap: onShare,
-              child: const Icon(Icons.ios_share_outlined,
-                  color: _T.text2, size: 18)),
+              child:
+                  Icon(Icons.ios_share_outlined, color: t.fg2, size: 18)),
         ],
         if (onNotif != null) ...[
           const SizedBox(width: 8),
           subLoading
-              ? const SizedBox(
+              ? SizedBox(
                   width: 38,
                   height: 38,
                   child: Center(
@@ -344,28 +330,27 @@ class _DetailNav extends StatelessWidget {
                           width: 18,
                           height: 18,
                           child: CircularProgressIndicator(
-                              strokeWidth: 2, color: _T.brand))))
+                              strokeWidth: 2, color: t.accent))))
               : _NavBtn(
                   onTap: onNotif,
                   child: Icon(
                       subscribed
                           ? Icons.notifications_active
                           : Icons.notifications_none_outlined,
-                      color: subscribed ? _T.brand : _T.text2,
+                      color: subscribed ? t.accent : t.fg2,
                       size: 18)),
         ],
         if (onEdit != null) ...[
           const SizedBox(width: 8),
           _NavBtn(
               onTap: onEdit,
-              child:
-                  const Icon(Icons.edit_outlined, color: _T.text2, size: 18)),
+              child: Icon(Icons.edit_outlined, color: t.fg2, size: 18)),
         ],
         if (onDelete != null) ...[
           const SizedBox(width: 8),
           _NavBtn(
               onTap: onDelete,
-              child: const Icon(Icons.delete_outline, color: _T.red, size: 18)),
+              child: Icon(Icons.delete_outline, color: t.danger, size: 18)),
         ],
       ]),
     );
@@ -379,15 +364,16 @@ class _NavBtn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = GwTheme.of(context);
     return GestureDetector(
       onTap: onTap,
       child: Container(
         width: 38,
         height: 38,
         decoration: BoxDecoration(
-            color: _T.bgElev1,
+            color: t.surface,
             shape: BoxShape.circle,
-            border: Border.all(color: _T.divider)),
+            border: Border.all(color: t.cardBorder)),
         alignment: Alignment.center,
         child: child,
       ),
@@ -401,7 +387,8 @@ class _ErrorBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(child: Text(message, style: const TextStyle(color: _T.red)));
+    final t = GwTheme.of(context);
+    return Center(child: Text(message, style: TextStyle(color: t.danger)));
   }
 }
 
@@ -418,6 +405,7 @@ class _GolfDetailBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = GwTheme.of(context);
     if (data == null) {
       return _CustomGolfDetailBody(
         event: event,
@@ -426,7 +414,7 @@ class _GolfDetailBody extends StatelessWidget {
     }
 
     final rec = data!.aiRecommendation;
-    final s = _statusOf(rec.status);
+    final s = _statusOf(t, rec.status);
     final policy = data!.cancellationPolicy;
 
     return ListView(
@@ -435,8 +423,8 @@ class _GolfDetailBody extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: _T.bgElev1,
-            borderRadius: BorderRadius.circular(16),
+            color: t.surface,
+            borderRadius: BorderRadius.circular(18),
             border: Border.all(color: s.border),
           ),
           child: Column(
@@ -448,12 +436,11 @@ class _GolfDetailBody extends StatelessWidget {
                       fontSize: 16,
                       fontWeight: FontWeight.w700)),
               const SizedBox(height: 8),
-              Text(rec.detail,
-                  style: const TextStyle(color: _T.text3, fontSize: 13)),
+              Text(rec.detail, style: TextStyle(color: t.fg3, fontSize: 13)),
               if (policy.message.isNotEmpty) ...[
                 const SizedBox(height: 16),
                 Text(policy.message,
-                    style: const TextStyle(color: _T.text2, fontSize: 13)),
+                    style: TextStyle(color: t.fg2, fontSize: 13)),
               ],
             ],
           ),
@@ -462,59 +449,83 @@ class _GolfDetailBody extends StatelessWidget {
         _ScorecardEntry(event: event, onTap: onScorecard),
         const SizedBox(height: 20),
         if (data!.forecast.isNotEmpty) ...[
-          const Text('부킹 시간대 예보',
+          Text('부킹 시간대 예보',
               style: TextStyle(
-                  color: _T.text1, fontSize: 14, fontWeight: FontWeight.w700)),
-          const SizedBox(height: 12),
+                  color: t.fg3,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 1.2)),
+          const SizedBox(height: 11),
           _ForecastTrendCard(
             forecast: data!.forecast,
             bookingTime: event.startDate,
           ),
         ],
         const SizedBox(height: 24),
-        // 식당 추천 섹션
-        GestureDetector(
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => RestaurantScreen(
-                  lat: event.searchLat,
-                  lng: event.searchLng,
-                  courseName: event.courseName ?? event.title,
-                ),
-              ),
-            );
-          },
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: _T.bgElev1,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: _T.divider),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('🍽️ 근처 식당 추천',
-                        style: TextStyle(
-                            color: _T.text1,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700)),
-                    SizedBox(height: 4),
-                    Text('조식·중식 장소를 찾아보세요',
-                        style: TextStyle(color: _T.text3, fontSize: 12)),
-                  ],
-                ),
-                Icon(Icons.arrow_forward, color: _T.text2),
-              ],
-            ),
-          ),
+        _RestaurantEntry(
+          lat: event.searchLat,
+          lng: event.searchLng,
+          courseName: event.courseName ?? event.title,
         ),
       ],
+    );
+  }
+}
+
+class _RestaurantEntry extends StatelessWidget {
+  final double lat;
+  final double lng;
+  final String courseName;
+
+  const _RestaurantEntry({
+    required this.lat,
+    required this.lng,
+    required this.courseName,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final t = GwTheme.of(context);
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => RestaurantScreen(
+              lat: lat,
+              lng: lng,
+              courseName: courseName,
+            ),
+          ),
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: t.surface,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: t.cardBorder),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('근처 식당 추천',
+                    style: TextStyle(
+                        color: t.fg,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700)),
+                const SizedBox(height: 4),
+                Text('조식·중식 장소를 찾아보세요',
+                    style: TextStyle(color: t.fg3, fontSize: 12)),
+              ],
+            ),
+            Icon(Icons.arrow_forward, color: t.accent),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -529,6 +540,7 @@ class _CustomGolfDetailBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = GwTheme.of(context);
     final hasLocation = event.lat != null && event.lng != null;
     final address = event.address?.trim();
     final location = event.location ?? event.courseName ?? event.title;
@@ -539,22 +551,22 @@ class _CustomGolfDetailBody extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
-            color: _T.bgElev1,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: _T.divider),
+            color: t.surface,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: t.cardBorder),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('커스텀 골프장 일정',
+              Text('날씨 준비 중인 일정',
                   style: TextStyle(
-                      color: _T.text1,
+                      color: t.fg,
                       fontSize: 17,
                       fontWeight: FontWeight.w800)),
               const SizedBox(height: 8),
-              const Text(
-                'DB에 등록되지 않은 골프장이라 날씨 위험 알림은 제공되지 않지만, 일정과 지도 위치는 사용할 수 있습니다.',
-                style: TextStyle(color: _T.text2, fontSize: 13, height: 1.4),
+              Text(
+                '골프장 매칭 또는 예보 캐시가 아직 준비되지 않았습니다. 일정, 지도, 식당 추천은 사용할 수 있고 날씨는 잠시 후 다시 확인해 주세요.',
+                style: TextStyle(color: t.fg2, fontSize: 13, height: 1.4),
               ),
               const SizedBox(height: 16),
               _InfoLine(
@@ -566,10 +578,10 @@ class _CustomGolfDetailBody extends StatelessWidget {
                   text: address?.isNotEmpty == true ? address! : location),
               if (!hasLocation) ...[
                 const SizedBox(height: 12),
-                const Text(
+                Text(
                   '지도 표시가 안 되면 일정 수정에서 골프장명과 주소를 함께 입력해 주세요.',
                   style:
-                      TextStyle(color: _T.yellow, fontSize: 12, height: 1.35),
+                      TextStyle(color: t.warn, fontSize: 12, height: 1.35),
                 ),
               ],
             ],
@@ -579,46 +591,10 @@ class _CustomGolfDetailBody extends StatelessWidget {
         _ScorecardEntry(event: event, onTap: onScorecard),
         const SizedBox(height: 20),
         if (hasLocation)
-          GestureDetector(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => RestaurantScreen(
-                    lat: event.lat!,
-                    lng: event.lng!,
-                    courseName: event.courseName ?? event.title,
-                  ),
-                ),
-              );
-            },
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: _T.bgElev1,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: _T.divider),
-              ),
-              child: const Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('근처 식당 추천',
-                          style: TextStyle(
-                              color: _T.text1,
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700)),
-                      SizedBox(height: 4),
-                      Text('조식·중식 장소를 찾아보세요',
-                          style: TextStyle(color: _T.text3, fontSize: 12)),
-                    ],
-                  ),
-                  Icon(Icons.arrow_forward, color: _T.text2),
-                ],
-              ),
-            ),
+          _RestaurantEntry(
+            lat: event.lat!,
+            lng: event.lng!,
+            courseName: event.courseName ?? event.title,
           ),
       ],
     );
@@ -636,14 +612,15 @@ class _ScorecardEntry extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = GwTheme.of(context);
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: _T.bgElev1,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: _T.divider),
+          color: t.surface,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: t.cardBorder),
         ),
         child: Row(
           children: [
@@ -651,40 +628,40 @@ class _ScorecardEntry extends StatelessWidget {
               width: 42,
               height: 42,
               decoration: BoxDecoration(
-                color: _T.greenBg,
+                color: t.accent.withValues(alpha: 0.14),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: _T.greenBorder),
+                border: Border.all(color: t.accent.withValues(alpha: 0.35)),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.scoreboard_outlined,
-                color: _T.green,
+                color: t.accent,
                 size: 21,
               ),
             ),
             const SizedBox(width: 12),
-            const Expanded(
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     '스코어카드',
                     style: TextStyle(
-                      color: _T.text1,
+                      color: t.fg,
                       fontSize: 15,
                       fontWeight: FontWeight.w800,
                     ),
                   ),
-                  SizedBox(height: 4),
+                  const SizedBox(height: 4),
                   Text(
                     '18홀 타수·퍼트·페어웨이 기록',
-                    style: TextStyle(color: _T.text3, fontSize: 12),
+                    style: TextStyle(color: t.fg3, fontSize: 12),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
             ),
-            const Icon(Icons.arrow_forward_ios, color: _T.text3, size: 16),
+            Icon(Icons.arrow_forward_ios, color: t.fg3, size: 16),
           ],
         ),
       ),
@@ -699,14 +676,15 @@ class _InfoLine extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = GwTheme.of(context);
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, color: _T.text3, size: 16),
+        Icon(icon, color: t.fg3, size: 16),
         const SizedBox(width: 8),
         Expanded(
           child: Text(text,
-              style: const TextStyle(color: _T.text2, fontSize: 13),
+              style: TextStyle(color: t.fg2, fontSize: 13),
               maxLines: 2,
               overflow: TextOverflow.ellipsis),
         ),
@@ -725,6 +703,7 @@ class _ForecastTrendCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = GwTheme.of(context);
     final items = _bookingWindowItems();
     if (items.isEmpty) return const SizedBox.shrink();
 
@@ -736,20 +715,20 @@ class _ForecastTrendCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 16, 14, 14),
       decoration: BoxDecoration(
-        color: _T.bgElev1,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _T.divider),
+        color: t.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: t.cardBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Icon(Icons.schedule_outlined, color: _T.text3, size: 15),
+              Icon(Icons.schedule_outlined, color: t.fg3, size: 15),
               const SizedBox(width: 6),
               Text(
                 '부킹 ${_bookingTimeLabel()} 기준',
-                style: const TextStyle(color: _T.text3, fontSize: 12),
+                style: TextStyle(color: t.fg3, fontSize: 12),
               ),
             ],
           ),
@@ -768,10 +747,14 @@ class _ForecastTrendCard extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
                   decoration: BoxDecoration(
-                    color: isStart ? _T.greenBg : Colors.transparent,
+                    color: isStart
+                        ? t.accent.withValues(alpha: 0.12)
+                        : Colors.transparent,
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(
-                      color: isStart ? _T.greenBorder : Colors.transparent,
+                      color: isStart
+                          ? t.accent.withValues(alpha: 0.4)
+                          : Colors.transparent,
                     ),
                   ),
                   child: Column(
@@ -779,19 +762,29 @@ class _ForecastTrendCard extends StatelessWidget {
                     children: [
                       Text(f.timeLabel,
                           style: TextStyle(
-                              color: isStart ? _T.text1 : _T.text3,
+                              color: isStart ? t.fg : t.fg3,
                               fontSize: 12,
                               fontWeight:
                                   isStart ? FontWeight.w800 : FontWeight.w500)),
                       SizedBox(
                         height: 16,
                         child: Text(isStart ? '시작' : '',
-                            style: const TextStyle(
-                                color: _T.green,
+                            style: TextStyle(
+                                color: t.accent,
                                 fontSize: 10,
                                 fontWeight: FontWeight.w800)),
                       ),
-                      Text(f.skyEmoji, style: const TextStyle(fontSize: 24)),
+                      SizedBox(
+                        height: 26,
+                        child: Center(
+                          child: WxIcon.forecast(
+                            sky: f.sky,
+                            rainProb: f.rainProb,
+                            size: 22,
+                            color: isStart ? t.accent : t.fg2,
+                          ),
+                        ),
+                      ),
                       const SizedBox(height: 8),
                       SizedBox(
                         height: 66,
@@ -801,7 +794,7 @@ class _ForecastTrendCard extends StatelessWidget {
                             width: 8,
                             height: barHeight,
                             decoration: BoxDecoration(
-                              color: _T.green.withValues(alpha: 0.9),
+                              color: t.accent.withValues(alpha: 0.9),
                               borderRadius: BorderRadius.circular(99),
                             ),
                           ),
@@ -809,10 +802,11 @@ class _ForecastTrendCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 6),
                       Text('${f.temp.toInt()}°',
-                          style: const TextStyle(
-                              color: _T.text1,
+                          style: TextStyle(
+                              color: t.fg,
                               fontSize: 15,
-                              fontWeight: FontWeight.w800)),
+                              fontFamily: GwTheme.numFont,
+                              fontWeight: FontWeight.w700)),
                       const SizedBox(height: 8),
                       SizedBox(
                         height: 34,
@@ -822,7 +816,7 @@ class _ForecastTrendCard extends StatelessWidget {
                             width: 22,
                             height: rainHeight,
                             decoration: BoxDecoration(
-                              color: f.rainProb >= 40 ? _T.yellow : _T.brand,
+                              color: f.rainProb >= 40 ? t.warn : t.sky,
                               borderRadius: BorderRadius.circular(6),
                             ),
                           ),
@@ -830,12 +824,10 @@ class _ForecastTrendCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text('비 ${f.rainProb}%',
-                          style:
-                              const TextStyle(color: _T.text3, fontSize: 11)),
+                          style: TextStyle(color: t.fg3, fontSize: 11)),
                       const SizedBox(height: 2),
                       Text('${f.windSpeed.toStringAsFixed(1)}m/s',
-                          style:
-                              const TextStyle(color: _T.text3, fontSize: 11)),
+                          style: TextStyle(color: t.fg3, fontSize: 11)),
                     ],
                   ),
                 );

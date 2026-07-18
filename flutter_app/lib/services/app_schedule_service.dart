@@ -158,6 +158,25 @@ class AppScheduleService {
     await ScorecardService.instance.deleteScoreForSchedule(scheduleId);
   }
 
+  Future<Map<String, Map<String, dynamic>>> exportSchedules() {
+    return _loadSchedules();
+  }
+
+  Future<void> importSchedules(
+    Map<String, Map<String, dynamic>> incoming,
+  ) async {
+    if (incoming.isEmpty) return;
+
+    final schedules = await _loadSchedules();
+    incoming.forEach((scheduleId, scheduleData) {
+      final current = schedules[scheduleId];
+      if (current == null || _isNewer(scheduleData, current)) {
+        schedules[scheduleId] = Map<String, dynamic>.from(scheduleData);
+      }
+    });
+    await _saveSchedules(schedules);
+  }
+
   bool _isGeneratedTestSchedule(Map<String, dynamic> schedule) {
     final locationName = schedule['locationName'] as String?;
     final title = schedule['title'] as String?;
@@ -172,10 +191,18 @@ class AppScheduleService {
     final raw = prefs.getString(_localSchedulesKey);
     if (raw == null || raw.isEmpty) return {};
 
-    final decoded = jsonDecode(raw) as Map<String, dynamic>;
-    return decoded.map(
-      (key, value) => MapEntry(key, Map<String, dynamic>.from(value as Map)),
-    );
+    try {
+      final decoded = jsonDecode(raw) as Map<String, dynamic>;
+      return decoded.map(
+        (key, value) => MapEntry(key, Map<String, dynamic>.from(value as Map)),
+      );
+    } on FormatException {
+      await prefs.remove(_localSchedulesKey);
+      return {};
+    } on TypeError {
+      await prefs.remove(_localSchedulesKey);
+      return {};
+    }
   }
 
   Future<void> _saveSchedules(
@@ -183,5 +210,11 @@ class AppScheduleService {
   ) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_localSchedulesKey, jsonEncode(schedules));
+  }
+
+  bool _isNewer(Map<String, dynamic> incoming, Map<String, dynamic> current) {
+    final incomingUpdatedAt = (incoming['updatedAt'] as num?)?.toInt() ?? 0;
+    final currentUpdatedAt = (current['updatedAt'] as num?)?.toInt() ?? 0;
+    return incomingUpdatedAt >= currentUpdatedAt;
   }
 }

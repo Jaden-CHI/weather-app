@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:home_widget/home_widget.dart';
 import '../models/golf_event.dart';
 import '../models/weather_data.dart';
@@ -29,15 +28,17 @@ class WidgetUpdater {
       HomeWidget.saveWidgetData('dday_label', event.ddayLabel),
       HomeWidget.saveWidgetData('course_name', event.courseName ?? event.title),
       HomeWidget.saveWidgetData('forecast_date', event.formattedDate),
-      HomeWidget.saveWidgetData('status', rec.status),           // GREEN/YELLOW/RED
+      HomeWidget.saveWidgetData('status', rec.status), // GREEN/YELLOW/RED
       HomeWidget.saveWidgetData('status_message', rec.message),
       HomeWidget.saveWidgetData('temp', _tempSummary(weather.forecast)),
       HomeWidget.saveWidgetData('rain_prob', _rainSummary(weather.forecast)),
       HomeWidget.saveWidgetData('wind_speed', _windSummary(weather.forecast)),
       HomeWidget.saveWidgetData('cancel_message', policy.message),
       HomeWidget.saveWidgetData('cancel_urgency', policy.urgency),
-      HomeWidget.saveWidgetData('can_cancel_free', policy.canCancelFree?.toString() ?? 'null'),
-      HomeWidget.saveWidgetData('last_updated', DateTime.now().toIso8601String()),
+      HomeWidget.saveWidgetData(
+          'can_cancel_free', policy.canCancelFree?.toString() ?? 'null'),
+      HomeWidget.saveWidgetData(
+          'last_updated', DateTime.now().toIso8601String()),
     ]);
 
     await _triggerUpdate();

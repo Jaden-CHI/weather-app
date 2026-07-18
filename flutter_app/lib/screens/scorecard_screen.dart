@@ -1,15 +1,19 @@
 import 'package:flutter/material.dart';
 
+import '../config/app_theme.dart';
 import '../models/golf_event.dart';
 import '../models/golf_score.dart';
 import '../services/scorecard_service.dart';
+import 'score_ocr_screen.dart';
 
 class ScorecardScreen extends StatefulWidget {
   final GolfEvent event;
+  final bool openOcrOnStart;
 
   const ScorecardScreen({
     super.key,
     required this.event,
+    this.openOcrOnStart = false,
   });
 
   @override
@@ -20,6 +24,7 @@ class _ScorecardScreenState extends State<ScorecardScreen> {
   GolfRoundScore? _score;
   bool _loading = true;
   bool _saving = false;
+  bool _ocrOpenedFromStart = false;
 
   @override
   void initState() {
@@ -35,11 +40,30 @@ class _ScorecardScreenState extends State<ScorecardScreen> {
       _score = score;
       _loading = false;
     });
+    if (widget.openOcrOnStart && !_ocrOpenedFromStart) {
+      _ocrOpenedFromStart = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _openOcr();
+        }
+      });
+    }
   }
 
   Future<void> _saveScore() async {
-    final score = _score;
+    var score = _score;
     if (score == null || _saving) return;
+
+    final resolvedCourseName = await _resolveCourseNameBeforeSave(score);
+    if (!mounted || resolvedCourseName == null) return;
+
+    if (resolvedCourseName != score.courseName) {
+      score = score.copyWith(
+        courseName: resolvedCourseName,
+        updatedAt: DateTime.now(),
+      );
+      setState(() => _score = score);
+    }
 
     setState(() => _saving = true);
     try {
@@ -59,6 +83,72 @@ class _ScorecardScreenState extends State<ScorecardScreen> {
     }
   }
 
+  Future<String?> _resolveCourseNameBeforeSave(GolfRoundScore score) async {
+    final currentName = score.courseName.trim();
+    if (currentName.isNotEmpty) return currentName;
+
+    final controller = TextEditingController();
+    final courseName = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            final t = GwTheme.of(context);
+            return AlertDialog(
+              backgroundColor: t.surface,
+              title: Text(
+                '골프장 이름 확인',
+                style: TextStyle(color: t.fg),
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '이번 카드에서는 골프장 이름을 읽지 못했어요. 저장 전에 골프장 이름만 입력해 주세요.',
+                    style: TextStyle(
+                      color: t.fg3,
+                      fontSize: 13,
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: controller,
+                    autofocus: true,
+                    style: TextStyle(color: t.fg),
+                    decoration: const InputDecoration(
+                      labelText: '골프장 이름',
+                      hintText: '예: 드림파크CC',
+                    ),
+                    onChanged: (_) => setDialogState(() {}),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: const Text('취소'),
+                ),
+                FilledButton(
+                  onPressed: controller.text.trim().isEmpty
+                      ? null
+                      : () => Navigator.pop(
+                            dialogContext,
+                            controller.text.trim(),
+                          ),
+                  child: const Text('저장 계속'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+    controller.dispose();
+    return courseName;
+  }
+
   void _updateHole(int index, HoleScore hole) {
     final current = _score;
     if (current == null) return;
@@ -70,32 +160,82 @@ class _ScorecardScreenState extends State<ScorecardScreen> {
     });
   }
 
+  Future<void> _openOcr() async {
+    final current = _score;
+    if (current == null || _loading) return;
+
+    final result = await Navigator.push<ScoreOcrResult>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ScoreOcrScreen(baseHoles: current.holes),
+      ),
+    );
+
+    if (result == null || !mounted) return;
+
+    final companions = result.companions
+        .map(
+          (companion) => CompanionScore(
+            name: companion.name.trim(),
+            holes: companion.holes,
+          ),
+        )
+        .where((companion) => companion.name.isNotEmpty)
+        .toList(growable: false);
+
+    setState(() {
+      _score = current.copyWith(
+        courseName: result.courseName?.trim().isNotEmpty == true
+            ? result.courseName!.trim()
+            : current.courseName,
+        playedAt: result.playedAt ?? current.playedAt,
+        holes: result.holes,
+        companions: companions,
+        updatedAt: DateTime.now(),
+      );
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          companions.isEmpty
+              ? 'OCR 결과를 불러왔어요. 홀별 점수만 한 번 확인해 주세요.'
+              : 'OCR 결과와 동반자 ${companions.length}명 기록을 불러왔어요.',
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final t = GwTheme.of(context);
     final score = _score;
 
     return Scaffold(
-      backgroundColor: _ScoreColors.bgDeep,
+      backgroundColor: t.bg,
       body: SafeArea(
         child: Column(
           children: [
             _ScoreNav(
-              title: widget.event.courseName ??
-                  widget.event.location ??
-                  widget.event.title,
+              title: _resolveScreenTitle(score),
               onBack: () => Navigator.pop(context),
+              onOcr: _loading ? null : _openOcr,
             ),
             Expanded(
               child: _loading || score == null
-                  ? const Center(
+                  ? Center(
                       child: CircularProgressIndicator(
-                        color: _ScoreColors.brand,
+                        color: t.accent,
                       ),
                     )
                   : ListView(
                       padding: const EdgeInsets.fromLTRB(20, 14, 20, 120),
                       children: [
                         _RoundSummary(score: score),
+                        if (score.companions.isNotEmpty) ...[
+                          const SizedBox(height: 14),
+                          _CompanionSummary(score: score),
+                        ],
                         const SizedBox(height: 14),
                         ...List.generate(score.holes.length, (index) {
                           final hole = score.holes[index];
@@ -118,18 +258,18 @@ class _ScorecardScreenState extends State<ScorecardScreen> {
         top: false,
         child: Container(
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 18),
-          decoration: const BoxDecoration(
-            color: _ScoreColors.bgDeep,
+          decoration: BoxDecoration(
+            color: t.bg,
             border: Border(
-              top: BorderSide(color: _ScoreColors.divider),
+              top: BorderSide(color: t.line),
             ),
           ),
           child: SizedBox(
             height: 52,
             child: FilledButton.icon(
               style: FilledButton.styleFrom(
-                backgroundColor: _ScoreColors.mint,
-                foregroundColor: const Color(0xFF09241F),
+                backgroundColor: t.accent,
+                foregroundColor: t.accentInk,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -152,28 +292,55 @@ class _ScorecardScreenState extends State<ScorecardScreen> {
       ),
     );
   }
+
+  String _resolveScreenTitle(GolfRoundScore? score) {
+    final scoreName = score?.courseName.trim();
+    if (scoreName != null && scoreName.isNotEmpty) {
+      return scoreName;
+    }
+
+    final eventCourseName = widget.event.courseName?.trim();
+    if (eventCourseName != null && eventCourseName.isNotEmpty) {
+      return eventCourseName;
+    }
+
+    final eventLocation = widget.event.location?.trim();
+    if (eventLocation != null && eventLocation.isNotEmpty) {
+      return eventLocation;
+    }
+
+    final title = widget.event.title.trim();
+    if (title.isNotEmpty) {
+      return title;
+    }
+
+    return '지난 라운드 OCR';
+  }
 }
 
 class _ScoreNav extends StatelessWidget {
   final String title;
   final VoidCallback onBack;
+  final VoidCallback? onOcr;
 
   const _ScoreNav({
     required this.title,
     required this.onBack,
+    this.onOcr,
   });
 
   @override
   Widget build(BuildContext context) {
+    final t = GwTheme.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
       child: Row(
         children: [
           _RoundIconButton(
             onTap: onBack,
-            child: const Icon(
+            child: Icon(
               Icons.arrow_back_ios_new,
-              color: _ScoreColors.text1,
+              color: t.fg,
               size: 17,
             ),
           ),
@@ -182,10 +349,10 @@ class _ScoreNav extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   '스코어카드',
                   style: TextStyle(
-                    color: _ScoreColors.text3,
+                    color: t.fg3,
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
                   ),
@@ -195,13 +362,74 @@ class _ScoreNav extends StatelessWidget {
                   title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: _ScoreColors.text1,
+                  style: TextStyle(
+                    color: t.fg,
                     fontSize: 19,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
               ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          _RoundIconButton(
+            onTap: onOcr,
+            child: Icon(
+              Icons.document_scanner_outlined,
+              color: t.accent,
+              size: 18,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CompanionSummary extends StatelessWidget {
+  final GolfRoundScore score;
+
+  const _CompanionSummary({
+    required this.score,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final t = GwTheme.of(context);
+    final names = score.companions
+        .map((companion) => companion.name.trim())
+        .where((name) => name.isNotEmpty)
+        .toList(growable: false);
+    if (names.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: t.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: t.cardBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '동반자 OCR 결과',
+            style: TextStyle(
+              color: t.fg,
+              fontSize: 15,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            names.join(' · '),
+            style: TextStyle(
+              color: t.fg2,
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              height: 1.4,
             ),
           ),
         ],
@@ -217,12 +445,13 @@ class _RoundSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = GwTheme.of(context);
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: _ScoreColors.bgElev1,
+        color: t.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _ScoreColors.divider),
+        border: Border.all(color: t.cardBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -295,20 +524,22 @@ class _SummaryMetric extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = GwTheme.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
-          style: const TextStyle(color: _ScoreColors.text3, fontSize: 12),
+          style: TextStyle(color: t.fg3, fontSize: 12),
         ),
         const SizedBox(height: 3),
         Text(
           value,
           style: TextStyle(
-            color: accent ? _ScoreColors.yellow : _ScoreColors.text1,
+            color: accent ? t.warn : t.fg,
             fontSize: 26,
             fontWeight: FontWeight.w900,
+            fontFamily: GwTheme.numFont,
           ),
         ),
       ],
@@ -327,11 +558,12 @@ class _TinyMetric extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = GwTheme.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
       margin: const EdgeInsets.only(right: 8),
       decoration: BoxDecoration(
-        color: _ScoreColors.bgElev2,
+        color: t.surface2,
         borderRadius: BorderRadius.circular(10),
       ),
       child: Column(
@@ -341,17 +573,18 @@ class _TinyMetric extends StatelessWidget {
             label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(color: _ScoreColors.text3, fontSize: 11),
+            style: TextStyle(color: t.fg3, fontSize: 11),
           ),
           const SizedBox(height: 4),
           Text(
             value,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: _ScoreColors.text1,
+            style: TextStyle(
+              color: t.fg,
               fontSize: 14,
               fontWeight: FontWeight.w800,
+              fontFamily: GwTheme.numFont,
             ),
           ),
         ],
@@ -371,12 +604,13 @@ class _HoleScoreCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = GwTheme.of(context);
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: _ScoreColors.bgElev1,
+        color: t.surface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: _ScoreColors.divider),
+        border: Border.all(color: t.cardBorder),
       ),
       child: Column(
         children: [
@@ -387,14 +621,15 @@ class _HoleScoreCard extends StatelessWidget {
                 height: 42,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: _ScoreColors.brand,
+                  color: t.accent,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
                   '${hole.holeNumber}H',
-                  style: const TextStyle(
-                    color: _ScoreColors.text1,
+                  style: TextStyle(
+                    color: t.accentInk,
                     fontWeight: FontWeight.w900,
+                    fontFamily: GwTheme.numFont,
                   ),
                 ),
               ),
@@ -402,8 +637,8 @@ class _HoleScoreCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   'Par ${hole.par} · ${_scoreLabel(hole.overPar)}',
-                  style: const TextStyle(
-                    color: _ScoreColors.text1,
+                  style: TextStyle(
+                    color: t.fg,
                     fontSize: 16,
                     fontWeight: FontWeight.w800,
                   ),
@@ -507,11 +742,12 @@ class _LabeledStepper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = GwTheme.of(context);
     return Container(
       height: 48,
       padding: const EdgeInsets.symmetric(horizontal: 8),
       decoration: BoxDecoration(
-        color: _ScoreColors.bgElev2,
+        color: t.surface2,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -521,8 +757,8 @@ class _LabeledStepper extends StatelessWidget {
               '$label $value',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: _ScoreColors.text1,
+              style: TextStyle(
+                color: t.fg,
                 fontSize: 13,
                 fontWeight: FontWeight.w800,
               ),
@@ -590,6 +826,7 @@ class _SmallIconButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = GwTheme.of(context);
     return GestureDetector(
       onTap: enabled ? onTap : null,
       child: Container(
@@ -598,12 +835,12 @@ class _SmallIconButton extends StatelessWidget {
         margin: const EdgeInsets.only(left: 4),
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: enabled ? _ScoreColors.brand : _ScoreColors.divider,
+          color: enabled ? t.accent : t.line,
           shape: BoxShape.circle,
         ),
         child: Icon(
           icon,
-          color: enabled ? _ScoreColors.text1 : _ScoreColors.text3,
+          color: enabled ? t.accentInk : t.fg3,
           size: 16,
         ),
       ),
@@ -624,15 +861,16 @@ class _FairwaySelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = GwTheme.of(context);
     final selected = enabled ? value : FairwayResult.notApplicable;
     return Row(
       children: [
-        const SizedBox(
+        SizedBox(
           width: 64,
           child: Text(
             '페어웨이',
             style: TextStyle(
-              color: _ScoreColors.text3,
+              color: t.fg3,
               fontSize: 12,
               fontWeight: FontWeight.w700,
             ),
@@ -662,18 +900,18 @@ class _FairwaySelector extends StatelessWidget {
               visualDensity: VisualDensity.compact,
               backgroundColor: WidgetStateProperty.resolveWith((states) {
                 if (states.contains(WidgetState.selected)) {
-                  return _ScoreColors.mint;
+                  return t.accent;
                 }
-                return _ScoreColors.bgElev2;
+                return t.surface2;
               }),
               foregroundColor: WidgetStateProperty.resolveWith((states) {
                 if (states.contains(WidgetState.selected)) {
-                  return const Color(0xFF09241F);
+                  return t.accentInk;
                 }
-                return _ScoreColors.text2;
+                return t.fg2;
               }),
               side: WidgetStateProperty.all(
-                const BorderSide(color: _ScoreColors.divider),
+                BorderSide(color: t.line),
               ),
             ),
           ),
@@ -696,30 +934,31 @@ class _TogglePill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = GwTheme.of(context);
     return GestureDetector(
       onTap: onTap,
       child: Container(
         height: 48,
         padding: const EdgeInsets.symmetric(horizontal: 12),
         decoration: BoxDecoration(
-          color: selected ? _ScoreColors.redBg : _ScoreColors.bgElev2,
+          color: selected ? t.dangerBg : t.surface2,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: selected ? _ScoreColors.redBorder : Colors.transparent,
+            color: selected ? t.dangerBorder : Colors.transparent,
           ),
         ),
         child: Row(
           children: [
             Icon(
               selected ? Icons.check_circle : Icons.radio_button_unchecked,
-              color: selected ? _ScoreColors.red : _ScoreColors.text3,
+              color: selected ? t.danger : t.fg3,
               size: 18,
             ),
             const SizedBox(width: 8),
             Text(
               label,
               style: TextStyle(
-                color: selected ? _ScoreColors.red : _ScoreColors.text1,
+                color: selected ? t.danger : t.fg,
                 fontWeight: FontWeight.w800,
               ),
             ),
@@ -731,7 +970,7 @@ class _TogglePill extends StatelessWidget {
 }
 
 class _RoundIconButton extends StatelessWidget {
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
   final Widget child;
 
   const _RoundIconButton({
@@ -741,35 +980,20 @@ class _RoundIconButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = GwTheme.of(context);
     return GestureDetector(
       onTap: onTap,
       child: Container(
         width: 38,
         height: 38,
         decoration: BoxDecoration(
-          color: _ScoreColors.bgElev1,
+          color: t.surface,
           shape: BoxShape.circle,
-          border: Border.all(color: _ScoreColors.divider),
+          border: Border.all(color: t.cardBorder),
         ),
         alignment: Alignment.center,
         child: child,
       ),
     );
   }
-}
-
-class _ScoreColors {
-  static const bgDeep = Color(0xFF0E2A24);
-  static const bgElev1 = Color(0xFF143630);
-  static const bgElev2 = Color(0xFF1B4332);
-  static const brand = Color(0xFF2E7D6B);
-  static const mint = Color(0xFF8DE7C1);
-  static const yellow = Color(0xFFFFC857);
-  static const red = Color(0xFFFF6B6B);
-  static const redBg = Color(0x25FF6B6B);
-  static const redBorder = Color(0x66FF6B6B);
-  static const text1 = Color(0xFFF4FBF8);
-  static const text2 = Color(0xB3F4FBF8);
-  static const text3 = Color(0x73F4FBF8);
-  static const divider = Color(0x14F4FBF8);
 }

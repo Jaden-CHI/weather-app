@@ -1,14 +1,23 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import '../config/app_theme.dart';
 import '../models/golf_event.dart';
 import '../services/app_schedule_service.dart';
+import '../services/calendar_import_service.dart';
 import '../services/weather_api_service.dart';
 
 class AddScheduleScreen extends StatefulWidget {
   final GolfEvent? editingEvent;
 
-  const AddScheduleScreen({super.key, this.editingEvent});
+  /// true면 화면 진입 직후 캘린더 가져오기를 자동 실행 (일정 탭 바로가기용)
+  final bool autoImportFromCalendar;
+
+  const AddScheduleScreen({
+    super.key,
+    this.editingEvent,
+    this.autoImportFromCalendar = false,
+  });
 
   @override
   State<AddScheduleScreen> createState() => _AddScheduleScreenState();
@@ -27,6 +36,7 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
   List<CourseSearchResult> _courseSuggestions = [];
   CourseSearchResult? _selectedCourse;
   bool _isSearchingCourses = false;
+  bool _isImportingCalendar = false;
 
   @override
   void initState() {
@@ -42,6 +52,12 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
     _titleController =
         TextEditingController(text: widget.editingEvent?.title ?? '');
     _notifyHours = 24;
+
+    if (widget.autoImportFromCalendar && widget.editingEvent == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _importFromCalendar();
+      });
+    }
   }
 
   @override
@@ -233,10 +249,226 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
     }
   }
 
+  Future<void> _importFromCalendar() async {
+    setState(() => _isImportingCalendar = true);
+
+    try {
+      final result = await CalendarImportService.instance.findGolfEvents();
+      if (!mounted) return;
+
+      if (!result.permissionGranted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('캘린더 접근 권한이 필요합니다. 설정에서 캘린더 권한을 허용해 주세요.'),
+          ),
+        );
+        return;
+      }
+
+      if (result.candidates.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('최근/예정 캘린더에서 골프 일정 후보를 찾지 못했어요.')),
+        );
+        return;
+      }
+
+      final selected = await _showCalendarCandidates(result.candidates);
+      if (selected == null || !mounted) return;
+
+      _applyCalendarCandidate(selected);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('캘린더 일정을 불러오지 못했어요: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isImportingCalendar = false);
+      }
+    }
+  }
+
+  Future<CalendarGolfImportCandidate?> _showCalendarCandidates(
+    List<CalendarGolfImportCandidate> candidates,
+  ) {
+    final t = GwTheme.of(context);
+    return showModalBottomSheet<CalendarGolfImportCandidate>(
+      context: context,
+      backgroundColor: t.bg,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: DraggableScrollableSheet(
+            expand: false,
+            initialChildSize: 0.72,
+            minChildSize: 0.42,
+            maxChildSize: 0.92,
+            builder: (context, controller) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 18, 20, 8),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            '캘린더 일정 후보',
+                            style: TextStyle(
+                              color: t.fg,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: () => Navigator.pop(context),
+                          icon: Icon(Icons.close, color: t.fg2),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Text(
+                      '가져올 일정을 선택하면 골프장, 날짜, 티오프 시간이 입력됩니다.',
+                      style: TextStyle(color: t.fg2, fontSize: 13),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Expanded(
+                    child: ListView.separated(
+                      controller: controller,
+                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                      itemCount: candidates.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 10),
+                      itemBuilder: (context, index) {
+                        final candidate = candidates[index];
+                        final matched = candidate.matchedCourse != null;
+                        return InkWell(
+                          borderRadius: BorderRadius.circular(12),
+                          onTap: () => Navigator.pop(context, candidate),
+                          child: Container(
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: t.surface,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: matched ? t.successBorder : t.cardBorder,
+                              ),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Icon(
+                                      matched
+                                          ? Icons.check_circle_outline
+                                          : Icons.calendar_today_outlined,
+                                      color: matched ? t.success : t.accent,
+                                      size: 18,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        candidate.displayCourseName,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          color: t.fg,
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  _formatCalendarDate(candidate.startAt),
+                                  style: TextStyle(
+                                    color: t.fg2,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  candidate.title,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: t.fg3,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                                if (!matched) ...[
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    '골프장명은 저장 전 한 번 확인해 주세요.',
+                                    style: TextStyle(
+                                      color: t.warn,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  void _applyCalendarCandidate(CalendarGolfImportCandidate candidate) {
+    final course = candidate.matchedCourse;
+    final courseName = course?.name ?? candidate.displayCourseName;
+
+    _courseSearchDebounce?.cancel();
+    _courseNameController.removeListener(_onCourseNameChanged);
+    _courseNameController.text = courseName;
+    _courseNameController.selection = TextSelection.collapsed(
+      offset: courseName.length,
+    );
+    _courseNameController.addListener(_onCourseNameChanged);
+
+    setState(() {
+      _selectedDate = DateTime(
+        candidate.startAt.year,
+        candidate.startAt.month,
+        candidate.startAt.day,
+      );
+      _selectedTime = TimeOfDay.fromDateTime(candidate.startAt);
+      _selectedCourse = course;
+      _courseSuggestions = [];
+      _isSearchingCourses = false;
+      _titleController.text = candidate.title;
+      _addressController.text = candidate.displayAddress ?? '';
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('캘린더 일정 정보를 입력했습니다. 저장 전 확인해 주세요.')),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final t = GwTheme.of(context);
     return Scaffold(
-      backgroundColor: const Color(0xFF0E2A24),
+      backgroundColor: t.bg,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -246,8 +478,8 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
         ),
         title: Text(
           widget.editingEvent != null ? '일정 수정' : '새 일정 추가',
-          style: const TextStyle(
-              color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600),
+          style: TextStyle(
+              color: t.fg, fontSize: 18, fontWeight: FontWeight.w600),
         ),
       ),
       body: SingleChildScrollView(
@@ -256,10 +488,12 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 '라운드 정보를 입력하면 골프장 날씨와 알림을 함께 확인할 수 있습니다.',
-                style: TextStyle(color: Color(0xB3F4FBF8), fontSize: 13),
+                style: TextStyle(color: t.fg2, fontSize: 13),
               ),
+              const SizedBox(height: 16),
+              _buildCalendarImportButton(),
               const SizedBox(height: 20),
 
               // 날짜
@@ -299,11 +533,11 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
                     value: _weatherAlert,
                     onChanged: (v) =>
                         setState(() => _weatherAlert = v ?? false),
-                    activeColor: const Color(0xFF2E7D6B),
+                    activeColor: t.accent,
                   ),
-                  const Text(
+                  Text(
                     '날씨 위험 알림 받기',
-                    style: TextStyle(color: Colors.white70),
+                    style: TextStyle(color: t.fg2),
                   ),
                 ],
               ),
@@ -315,22 +549,22 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
                 child: ElevatedButton(
                   onPressed: _isLoading ? null : _saveSchedule,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF2E7D6B),
+                    backgroundColor: t.accent,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8)),
                   ),
                   child: _isLoading
-                      ? const SizedBox(
+                      ? SizedBox(
                           height: 20,
                           width: 20,
                           child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white),
+                              strokeWidth: 2, color: t.accentInk),
                         )
                       : Text(
                           widget.editingEvent != null ? '일정 수정' : '일정 저장',
-                          style: const TextStyle(
-                              color: Colors.white,
+                          style: TextStyle(
+                              color: t.accentInk,
                               fontSize: 16,
                               fontWeight: FontWeight.w600),
                         ),
@@ -344,33 +578,67 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
   }
 
   Widget _buildSectionLabel(String label) {
+    final t = GwTheme.of(context);
     return Text(
       label,
-      style: const TextStyle(
-          color: Color(0xB3F4FBF8), fontSize: 13, fontWeight: FontWeight.w500),
+      style: TextStyle(
+          color: t.fg2, fontSize: 13, fontWeight: FontWeight.w500),
+    );
+  }
+
+  Widget _buildCalendarImportButton() {
+    final t = GwTheme.of(context);
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton.icon(
+        onPressed:
+            _isLoading || _isImportingCalendar ? null : _importFromCalendar,
+        style: OutlinedButton.styleFrom(
+          foregroundColor: t.accent,
+          side: BorderSide(color: t.accent.withValues(alpha: 0.2)),
+          padding: const EdgeInsets.symmetric(vertical: 13),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          backgroundColor: t.surface,
+        ),
+        icon: _isImportingCalendar
+            ? SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: t.accent,
+                ),
+              )
+            : const Icon(Icons.event_available_outlined, size: 19),
+        label: Text(
+          _isImportingCalendar ? '캘린더 확인 중' : '캘린더에서 가져오기',
+          style: const TextStyle(fontWeight: FontWeight.w700),
+        ),
+      ),
     );
   }
 
   Widget _buildCourseNameField() {
+    final t = GwTheme.of(context);
     return Column(
       children: [
         _buildTextField(_courseNameController, '예: 레이크사이드CC'),
         if (_isSearchingCourses)
-          const Padding(
-            padding: EdgeInsets.only(top: 8),
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
             child: LinearProgressIndicator(
               minHeight: 2,
-              backgroundColor: Color(0xFF143630),
-              color: Color(0xFF2E7D6B),
+              backgroundColor: t.surface,
+              color: t.accent,
             ),
           ),
         if (_courseSuggestions.isNotEmpty) ...[
           const SizedBox(height: 8),
           Container(
             decoration: BoxDecoration(
-              color: const Color(0xFF143630),
+              color: t.surface,
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: const Color(0x1FF4FBF8)),
+              border: Border.all(color: t.cardBorder),
             ),
             child: Column(
               children: _courseSuggestions.map((course) {
@@ -385,9 +653,9 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
                     ),
                     child: Row(
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.flag_outlined,
-                          color: Color(0xFF7DDEC3),
+                          color: t.accent,
                           size: 18,
                         ),
                         const SizedBox(width: 10),
@@ -399,8 +667,8 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
                                 course.name,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  color: Color(0xFFF4FBF8),
+                                style: TextStyle(
+                                  color: t.fg,
                                   fontSize: 14,
                                   fontWeight: FontWeight.w600,
                                 ),
@@ -414,8 +682,8 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
                                     subtitle,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                      color: Color(0x99F4FBF8),
+                                    style: TextStyle(
+                                      color: t.fg2,
                                       fontSize: 12,
                                     ),
                                   ),
@@ -423,9 +691,9 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
                             ],
                           ),
                         ),
-                        const Icon(
+                        Icon(
                           Icons.check_circle_outline,
-                          color: Color(0x802E7D6B),
+                          color: t.accent.withValues(alpha: 0.5),
                           size: 18,
                         ),
                       ],
@@ -441,14 +709,15 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
   }
 
   Widget _buildDateButton() {
+    final t = GwTheme.of(context);
     return GestureDetector(
       onTap: _selectDate,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: const Color(0xFF143630),
+          color: t.surface,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: const Color(0x14F4FBF8)),
+          border: Border.all(color: t.cardBorder),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -463,10 +732,9 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
                 '토',
                 '일'
               ][_selectedDate.weekday - 1]})',
-              style: const TextStyle(color: Color(0xFFF4FBF8), fontSize: 15),
+              style: TextStyle(color: t.fg, fontSize: 15),
             ),
-            const Icon(Icons.calendar_today,
-                color: Color(0xFF2E7D6B), size: 18),
+            Icon(Icons.calendar_today, color: t.accent, size: 18),
           ],
         ),
       ),
@@ -474,23 +742,24 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
   }
 
   Widget _buildTimeButton() {
+    final t = GwTheme.of(context);
     return GestureDetector(
       onTap: _selectTime,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: const Color(0xFF143630),
+          color: t.surface,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: const Color(0x14F4FBF8)),
+          border: Border.all(color: t.cardBorder),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
               '${_selectedTime.hour.toString().padLeft(2, '0')}:${_selectedTime.minute.toString().padLeft(2, '0')}',
-              style: const TextStyle(color: Color(0xFFF4FBF8), fontSize: 15),
+              style: TextStyle(color: t.fg, fontSize: 15),
             ),
-            const Icon(Icons.access_time, color: Color(0xFF2E7D6B), size: 18),
+            Icon(Icons.access_time, color: t.accent, size: 18),
           ],
         ),
       ),
@@ -498,21 +767,22 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
   }
 
   Widget _buildTextField(TextEditingController controller, String hint) {
+    final t = GwTheme.of(context);
     return TextField(
       controller: controller,
-      style: const TextStyle(color: Colors.white),
+      style: TextStyle(color: t.fg),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: const TextStyle(color: Color(0x73F4FBF8)),
+        hintStyle: TextStyle(color: t.fg3),
         filled: true,
-        fillColor: const Color(0xFF143630),
+        fillColor: t.surface,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: Color(0x14F4FBF8)),
+          borderSide: BorderSide(color: t.cardBorder),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: Color(0x14F4FBF8)),
+          borderSide: BorderSide(color: t.cardBorder),
         ),
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -521,6 +791,7 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
   }
 
   Widget _buildNotifyChips() {
+    final t = GwTheme.of(context);
     return Wrap(
       spacing: 8,
       children: [6, 12, 24, 48, 168, 240].map((hours) {
@@ -529,15 +800,23 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
         return ChoiceChip(
           label: Text(label),
           selected: selected,
-          selectedColor: const Color(0xFF2E7D6B),
-          backgroundColor: const Color(0xFF243447),
+          selectedColor: t.accent,
+          backgroundColor: t.surface2,
           labelStyle: TextStyle(
-            color: selected ? Colors.white : Colors.white54,
+            color: selected ? t.accentInk : t.fg3,
             fontSize: 12,
           ),
           onSelected: (_) => setState(() => _notifyHours = hours),
         );
       }).toList(),
     );
+  }
+
+  String _formatCalendarDate(DateTime date) {
+    const weekdays = ['월', '화', '수', '목', '금', '토', '일'];
+    final weekday = weekdays[date.weekday - 1];
+    final hour = date.hour.toString().padLeft(2, '0');
+    final minute = date.minute.toString().padLeft(2, '0');
+    return '${date.year}.${date.month.toString().padLeft(2, '0')}.${date.day.toString().padLeft(2, '0')} ($weekday) $hour:$minute';
   }
 }

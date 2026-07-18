@@ -2,6 +2,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'config/app_theme.dart';
 import 'firebase_options.dart';
 import 'services/background_service.dart';
 import 'services/notification_service.dart';
@@ -26,22 +27,16 @@ void main() async {
   runApp(const ProviderScope(child: WeatherApp()));
 }
 
-class WeatherApp extends StatelessWidget {
+class WeatherApp extends ConsumerWidget {
   const WeatherApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = ref.watch(gwThemeProvider);
     return MaterialApp(
       title: 'Golf Windy',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF2E7D6B),
-          brightness: Brightness.dark,
-        ),
-        useMaterial3: true,
-        fontFamily: 'Pretendard',
-      ),
+      theme: theme.toThemeData(),
       home: const HomeScreen(),
     );
   }

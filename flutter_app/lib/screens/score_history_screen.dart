@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
+import '../config/app_theme.dart';
 import '../models/golf_event.dart';
 import '../models/golf_score.dart';
 import '../services/scorecard_service.dart';
@@ -60,30 +63,33 @@ class _ScoreHistoryScreenState extends State<ScoreHistoryScreen> {
   Future<void> _deleteScore(GolfRoundScore score) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: _ScoreHistoryColors.bgElev1,
-        title: const Text(
-          '스코어 삭제',
-          style: TextStyle(color: _ScoreHistoryColors.text1),
-        ),
-        content: Text(
-          '${score.courseName} 기록을 삭제할까요?',
-          style: const TextStyle(color: _ScoreHistoryColors.text2),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('취소'),
+      builder: (context) {
+        final t = GwTheme.of(context);
+        return AlertDialog(
+          backgroundColor: t.surface,
+          title: Text(
+            '스코어 삭제',
+            style: TextStyle(color: t.fg),
           ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text(
-              '삭제',
-              style: TextStyle(color: _ScoreHistoryColors.red),
+          content: Text(
+            '${score.courseName} 기록을 삭제할까요?',
+            style: TextStyle(color: t.fg2),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('취소'),
             ),
-          ),
-        ],
-      ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: Text(
+                '삭제',
+                style: TextStyle(color: t.danger),
+              ),
+            ),
+          ],
+        );
+      },
     );
 
     if (confirmed != true) return;
@@ -95,10 +101,25 @@ class _ScoreHistoryScreenState extends State<ScoreHistoryScreen> {
     );
   }
 
+  Future<void> _editCourseName(GolfRoundScore score) async {
+    final updated = await showDialog<GolfRoundScore>(
+      context: context,
+      builder: (context) => _EditCourseNameDialog(score: score),
+    );
+
+    if (updated == null) return;
+    await ScorecardService.instance.saveScore(updated);
+    if (!mounted) return;
+    setState(_reload);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('골프장 이름을 수정했습니다.')),
+    );
+  }
+
   void _showOcrGuide() {
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: _ScoreHistoryColors.bgElev1,
+      backgroundColor: GwTheme.of(context).surface,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
@@ -110,45 +131,7 @@ class _ScoreHistoryScreenState extends State<ScoreHistoryScreen> {
   }
 
   Future<void> _createScoreFromOcr() async {
-    final recentScores = await ScorecardService.instance.getAllScores();
-    final recentCompanionSuggestions =
-        await ScorecardService.instance.getRecommendedCompanionNames(limit: 6);
     if (!mounted) return;
-    final prioritizedScores = [...recentScores];
-    prioritizedScores.sort((a, b) {
-      final incompleteCompare =
-          b.incompleteHoleCount.compareTo(a.incompleteHoleCount);
-      if (incompleteCompare != 0) return incompleteCompare;
-      return b.playedAt.compareTo(a.playedAt);
-    });
-
-    final recentCourseSuggestions = <_RecentCourseSuggestion>[];
-    for (final score in prioritizedScores) {
-      final courseName = score.courseName.trim();
-      if (courseName.isEmpty ||
-          recentCourseSuggestions
-              .any((item) => item.courseName == courseName)) {
-        continue;
-      }
-      recentCourseSuggestions.add(
-        _RecentCourseSuggestion(
-          courseName: courseName,
-          playedAt: score.playedAt,
-          needsReview: score.incompleteHoleCount > 0,
-          incompleteHoleCount: score.incompleteHoleCount,
-        ),
-      );
-      if (recentCourseSuggestions.length >= 6) break;
-    }
-
-    final controller = TextEditingController(
-      text: recentCourseSuggestions.isNotEmpty
-          ? recentCourseSuggestions.first.courseName
-          : '',
-    );
-    controller.selection = TextSelection.fromPosition(
-      TextPosition(offset: controller.text.length),
-    );
     DateTime selectedDate = DateTime.now();
 
     final event = await showDialog<GolfEvent>(
@@ -156,95 +139,23 @@ class _ScoreHistoryScreenState extends State<ScoreHistoryScreen> {
       builder: (dialogContext) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
+            final t = GwTheme.of(context);
             return AlertDialog(
-              backgroundColor: _ScoreHistoryColors.bgElev1,
-              title: const Text(
-                '지난 라운드 OCR 등록',
-                style: TextStyle(color: _ScoreHistoryColors.text1),
+              backgroundColor: t.surface,
+              title: Text(
+                'OCR 스캐닝',
+                style: TextStyle(color: t.fg),
               ),
               content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    TextField(
-                      controller: controller,
-                      style: const TextStyle(color: _ScoreHistoryColors.text1),
-                      decoration: const InputDecoration(
-                        labelText: '골프장 이름',
-                        hintText: '예: 드림파크CC',
-                      ),
-                    ),
-                    if (recentCourseSuggestions.isNotEmpty) ...[
-                      const SizedBox(height: 14),
-                      const Text(
-                        '최근 골프장',
-                        style: TextStyle(
-                          color: _ScoreHistoryColors.text3,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: recentCourseSuggestions
-                            .map(
-                              (suggestion) => _RecentCourseChip(
-                                suggestion: suggestion,
-                                onTap: () {
-                                  controller.text = suggestion.courseName;
-                                  controller.selection =
-                                      TextSelection.fromPosition(
-                                    TextPosition(
-                                      offset: controller.text.length,
-                                    ),
-                                  );
-                                  setDialogState(() {});
-                                },
-                              ),
-                            )
-                            .toList(growable: false),
-                      ),
-                    ],
-                    if (recentCompanionSuggestions.isNotEmpty) ...[
-                      const SizedBox(height: 14),
-                      const Text(
-                        '자주 함께한 동반자',
-                        style: TextStyle(
-                          color: _ScoreHistoryColors.text3,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        'OCR 후 이름이 흔들리면 아래 기록을 기준으로 자동 연결됩니다.',
-                        style: TextStyle(
-                          color: _ScoreHistoryColors.text3,
-                          fontSize: 11,
-                          height: 1.35,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: recentCompanionSuggestions
-                            .map(
-                              (suggestion) => _RecentCompanionChip(
-                                suggestion: suggestion,
-                              ),
-                            )
-                            .toList(growable: false),
-                      ),
-                    ],
                     const SizedBox(height: 14),
-                    const Text(
+                    Text(
                       '라운드 날짜',
                       style: TextStyle(
-                        color: _ScoreHistoryColors.text3,
+                        color: t.fg3,
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
                       ),
@@ -303,10 +214,10 @@ class _ScoreHistoryScreenState extends State<ScoreHistoryScreen> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    const Text(
-                      '수기 입력보다 먼저 OCR로 읽고, 필요한 항목만 보정하는 흐름입니다.',
+                    Text(
+                      '골프장 이름은 먼저 입력하지 않아도 됩니다. 먼저 OCR로 읽고, 필요한 경우에만 마지막에 보정할게요.',
                       style: TextStyle(
-                        color: _ScoreHistoryColors.text3,
+                        color: t.fg3,
                         fontSize: 12,
                       ),
                     ),
@@ -320,20 +231,16 @@ class _ScoreHistoryScreenState extends State<ScoreHistoryScreen> {
                 ),
                 FilledButton(
                   onPressed: () {
-                    final courseName = controller.text.trim();
-                    if (courseName.isEmpty) return;
                     Navigator.pop(
                       dialogContext,
                       GolfEvent(
                         id: 'ocr_round_${DateTime.now().millisecondsSinceEpoch}',
-                        title: courseName,
+                        title: '',
                         startDate: selectedDate,
-                        courseName: courseName,
-                        location: courseName,
                       ),
                     );
                   },
-                  child: const Text('지난 라운드 OCR 시작'),
+                  child: const Text('OCR 스캔 시작'),
                 ),
               ],
             );
@@ -341,27 +248,13 @@ class _ScoreHistoryScreenState extends State<ScoreHistoryScreen> {
         );
       },
     );
-
-    controller.dispose();
     if (event == null || !mounted) return;
-
-    final matchedCourse = await WeatherApiService.instance
-        .searchCourse(event.courseName ?? event.title);
-    if (!mounted) return;
-
-    final resolvedEvent = event.copyWith(
-      courseId: matchedCourse?.courseId ?? event.courseId,
-      courseName: matchedCourse?.name ?? event.courseName,
-      address: matchedCourse?.address,
-      lat: matchedCourse?.lat,
-      lng: matchedCourse?.lng,
-    );
 
     final updated = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
         builder: (_) => ScorecardScreen(
-          event: resolvedEvent,
+          event: event,
           openOcrOnStart: true,
         ),
       ),
@@ -373,16 +266,17 @@ class _ScoreHistoryScreenState extends State<ScoreHistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final t = GwTheme.of(context);
     return Scaffold(
-      backgroundColor: _ScoreHistoryColors.bgDeep,
+      backgroundColor: t.bg,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        foregroundColor: _ScoreHistoryColors.text1,
+        foregroundColor: t.fg,
         title: const Text('스코어 관리'),
         actions: [
           IconButton(
-            tooltip: '지난 라운드 OCR 등록',
+            tooltip: 'OCR 스캐닝',
             onPressed: _createScoreFromOcr,
             icon: const Icon(Icons.add_a_photo_outlined),
           ),
@@ -392,9 +286,9 @@ class _ScoreHistoryScreenState extends State<ScoreHistoryScreen> {
         future: _scoresFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState != ConnectionState.done) {
-            return const Center(
+            return Center(
               child: CircularProgressIndicator(
-                color: _ScoreHistoryColors.brand,
+                color: t.accent,
               ),
             );
           }
@@ -440,6 +334,7 @@ class _ScoreHistoryScreenState extends State<ScoreHistoryScreen> {
                     child: _ScoreListTile(
                       score: score,
                       onTap: () => _openScore(score),
+                      onEdit: () => _editCourseName(score),
                       onDelete: () => _deleteScore(score),
                     ),
                   ),
@@ -466,152 +361,22 @@ class _QuickDateChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = GwTheme.of(context);
     return InkWell(
       borderRadius: BorderRadius.circular(999),
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected
-              ? _ScoreHistoryColors.mint
-              : _ScoreHistoryColors.bgElev2,
+          color: isSelected ? t.accent : t.surface2,
           borderRadius: BorderRadius.circular(999),
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: isSelected
-                ? const Color(0xFF09241F)
-                : _ScoreHistoryColors.text2,
+            color: isSelected ? t.accentInk : t.fg2,
             fontSize: 12,
             fontWeight: FontWeight.w800,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _RecentCourseSuggestion {
-  final String courseName;
-  final DateTime playedAt;
-  final bool needsReview;
-  final int incompleteHoleCount;
-
-  const _RecentCourseSuggestion({
-    required this.courseName,
-    required this.playedAt,
-    required this.needsReview,
-    required this.incompleteHoleCount,
-  });
-}
-
-class _RecentCompanionChip extends StatelessWidget {
-  final CompanionNameSuggestion suggestion;
-
-  const _RecentCompanionChip({
-    required this.suggestion,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: _ScoreHistoryColors.bgElev2,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: _ScoreHistoryColors.divider),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            suggestion.name,
-            style: const TextStyle(
-              color: _ScoreHistoryColors.text2,
-              fontSize: 12,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            '${suggestion.roundCount}회 · ${_formatDate(suggestion.lastPlayedAt)}',
-            style: const TextStyle(
-              color: _ScoreHistoryColors.text3,
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _RecentCourseChip extends StatelessWidget {
-  final _RecentCourseSuggestion suggestion;
-  final VoidCallback onTap;
-
-  const _RecentCourseChip({
-    required this.suggestion,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(14),
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          decoration: BoxDecoration(
-            color: _ScoreHistoryColors.bgElev2,
-            borderRadius: BorderRadius.circular(14),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                suggestion.courseName,
-                style: const TextStyle(
-                  color: _ScoreHistoryColors.text2,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                _formatDate(suggestion.playedAt),
-                style: const TextStyle(
-                  color: _ScoreHistoryColors.text3,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              if (suggestion.needsReview) ...[
-                const SizedBox(height: 6),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: _ScoreHistoryColors.gold.withValues(alpha: 0.16),
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Text(
-                    '선택 보정 ${suggestion.incompleteHoleCount}홀',
-                    style: const TextStyle(
-                      color: _ScoreHistoryColors.gold,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                ),
-              ],
-            ],
           ),
         ),
       ),
@@ -681,13 +446,14 @@ class _PremiumBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = GwTheme.of(context);
     final best = stats.lifeBest;
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: _ScoreHistoryColors.bgElev1,
+        color: t.surface,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: _ScoreHistoryColors.goldBorder),
+        border: Border.all(color: t.warnBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -699,20 +465,20 @@ class _PremiumBanner extends StatelessWidget {
                 height: 40,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: _ScoreHistoryColors.gold,
+                  color: t.warn,
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.emoji_events_outlined,
-                  color: Color(0xFF241A04),
+                  color: t.accentInk,
                 ),
               ),
               const SizedBox(width: 12),
-              const Expanded(
+              Expanded(
                 child: Text(
                   '라이프베스트',
                   style: TextStyle(
-                    color: _ScoreHistoryColors.text1,
+                    color: t.fg,
                     fontSize: 18,
                     fontWeight: FontWeight.w900,
                   ),
@@ -720,10 +486,11 @@ class _PremiumBanner extends StatelessWidget {
               ),
               Text(
                 '${best.totalScore}',
-                style: const TextStyle(
-                  color: _ScoreHistoryColors.gold,
+                style: TextStyle(
+                  color: t.warn,
                   fontSize: 32,
                   fontWeight: FontWeight.w900,
+                  fontFamily: GwTheme.numFont,
                 ),
               ),
             ],
@@ -733,8 +500,8 @@ class _PremiumBanner extends StatelessWidget {
             '${best.courseName} · ${_formatDate(best.playedAt)} · ${best.overParLabel}',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: _ScoreHistoryColors.text2,
+            style: TextStyle(
+              color: t.fg2,
               fontSize: 14,
               fontWeight: FontWeight.w700,
             ),
@@ -770,6 +537,7 @@ class _TrackingResumeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = GwTheme.of(context);
     final first = scores.first;
     final completion = first.trackingCompletionPercent;
 
@@ -779,9 +547,9 @@ class _TrackingResumeCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
-          color: _ScoreHistoryColors.bgElev1,
+          color: t.surface,
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: _ScoreHistoryColors.goldBorder),
+          border: Border.all(color: t.warnBorder),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -793,12 +561,12 @@ class _TrackingResumeCard extends StatelessWidget {
                   height: 40,
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
-                    color: _ScoreHistoryColors.bgElev2,
+                    color: t.surface2,
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.track_changes_outlined,
-                    color: _ScoreHistoryColors.gold,
+                    color: t.warn,
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -808,8 +576,8 @@ class _TrackingResumeCard extends StatelessWidget {
                     children: [
                       Text(
                         '선택 세부 지표 ${scores.length}건',
-                        style: const TextStyle(
-                          color: _ScoreHistoryColors.text1,
+                        style: TextStyle(
+                          color: t.fg,
                           fontSize: 17,
                           fontWeight: FontWeight.w900,
                         ),
@@ -817,8 +585,8 @@ class _TrackingResumeCard extends StatelessWidget {
                       const SizedBox(height: 2),
                       Text(
                         first.trackingStageDescription,
-                        style: const TextStyle(
-                          color: _ScoreHistoryColors.text3,
+                        style: TextStyle(
+                          color: t.fg3,
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
                         ),
@@ -826,9 +594,9 @@ class _TrackingResumeCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                const Icon(
+                Icon(
                   Icons.chevron_right_rounded,
-                  color: _ScoreHistoryColors.text3,
+                  color: t.fg3,
                 ),
               ],
             ),
@@ -837,8 +605,8 @@ class _TrackingResumeCard extends StatelessWidget {
               '${first.courseName} · ${_formatDate(first.playedAt)}',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: _ScoreHistoryColors.text2,
+              style: TextStyle(
+                color: t.fg2,
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
               ),
@@ -848,8 +616,8 @@ class _TrackingResumeCard extends StatelessWidget {
               children: [
                 Text(
                   '세부 기록 $completion%',
-                  style: const TextStyle(
-                    color: _ScoreHistoryColors.text1,
+                  style: TextStyle(
+                    color: t.fg,
                     fontSize: 12,
                     fontWeight: FontWeight.w800,
                   ),
@@ -857,8 +625,8 @@ class _TrackingResumeCard extends StatelessWidget {
                 const Spacer(),
                 Text(
                   '선택 입력 ${first.incompleteHoleCount}홀',
-                  style: const TextStyle(
-                    color: _ScoreHistoryColors.gold,
+                  style: TextStyle(
+                    color: t.warn,
                     fontSize: 12,
                     fontWeight: FontWeight.w800,
                   ),
@@ -871,9 +639,9 @@ class _TrackingResumeCard extends StatelessWidget {
               child: LinearProgressIndicator(
                 value: first.trackingCompletionProgress,
                 minHeight: 8,
-                backgroundColor: _ScoreHistoryColors.bgElev2,
-                valueColor: const AlwaysStoppedAnimation<Color>(
-                  _ScoreHistoryColors.gold,
+                backgroundColor: t.surface2,
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  t.warn,
                 ),
               ),
             ),
@@ -942,58 +710,61 @@ class _StatsGrid extends StatelessWidget {
 class _ScoreListTile extends StatelessWidget {
   final GolfRoundScore score;
   final VoidCallback onTap;
+  final VoidCallback onEdit;
   final VoidCallback onDelete;
 
   const _ScoreListTile({
     required this.score,
     required this.onTap,
+    required this.onEdit,
     required this.onDelete,
   });
 
   @override
   Widget build(BuildContext context) {
+    final t = GwTheme.of(context);
     final badges = <_RoundStatusBadgeData>[
       _RoundStatusBadgeData(
         label: score.trackingStageLabel,
-        backgroundColor: _ScoreHistoryColors.bgElev2,
+        backgroundColor: t.surface2,
         foregroundColor: score.trackingStage == GolfRoundTrackingStage.complete
-            ? _ScoreHistoryColors.mint
+            ? t.accent
             : score.trackingStage == GolfRoundTrackingStage.scoreOnly
-                ? _ScoreHistoryColors.text2
-                : _ScoreHistoryColors.gold,
+                ? t.fg2
+                : t.warn,
       ),
       if (score.companions.isNotEmpty)
         _RoundStatusBadgeData(
           label: '동반자 ${score.companions.length}명',
-          backgroundColor: _ScoreHistoryColors.bgElev2,
-          foregroundColor: _ScoreHistoryColors.mint,
+          backgroundColor: t.surface2,
+          foregroundColor: t.accent,
         ),
       if (score.hasCompletePuttTracking)
-        const _RoundStatusBadgeData(
+        _RoundStatusBadgeData(
           label: '퍼트 기록',
-          backgroundColor: _ScoreHistoryColors.bgElev2,
-          foregroundColor: _ScoreHistoryColors.mint,
+          backgroundColor: t.surface2,
+          foregroundColor: t.accent,
         ),
       if (score.hasCompleteFairwayTracking)
-        const _RoundStatusBadgeData(
+        _RoundStatusBadgeData(
           label: '페어웨이 기록',
-          backgroundColor: _ScoreHistoryColors.bgElev2,
-          foregroundColor: _ScoreHistoryColors.gold,
+          backgroundColor: t.surface2,
+          foregroundColor: t.warn,
         ),
       if (score.hasFairwayTracking && !score.hasCompleteFairwayTracking)
         _RoundStatusBadgeData(
           label:
               '페어웨이 ${score.fairwayTrackedCount}/${score.fairwayOpportunityCount}홀',
-          backgroundColor: _ScoreHistoryColors.bgElev2,
-          foregroundColor: _ScoreHistoryColors.gold,
+          backgroundColor: t.surface2,
+          foregroundColor: t.warn,
         ),
       if (score.companions.isEmpty &&
           !score.hasCompletePuttTracking &&
           !score.hasFairwayTracking)
-        const _RoundStatusBadgeData(
+        _RoundStatusBadgeData(
           label: '스코어 저장',
-          backgroundColor: _ScoreHistoryColors.bgElev2,
-          foregroundColor: _ScoreHistoryColors.text2,
+          backgroundColor: t.surface2,
+          foregroundColor: t.fg2,
         ),
     ];
     final trackingSummary =
@@ -1008,9 +779,9 @@ class _ScoreListTile extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: _ScoreHistoryColors.bgElev1,
+          color: t.surface,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: _ScoreHistoryColors.divider),
+          border: Border.all(color: t.cardBorder),
         ),
         child: Row(
           children: [
@@ -1019,15 +790,16 @@ class _ScoreListTile extends StatelessWidget {
               height: 56,
               alignment: Alignment.center,
               decoration: BoxDecoration(
-                color: _ScoreHistoryColors.brand,
+                color: t.accent,
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Text(
                 '${score.totalScore}',
-                style: const TextStyle(
-                  color: _ScoreHistoryColors.text1,
+                style: TextStyle(
+                  color: t.accentInk,
                   fontSize: 20,
                   fontWeight: FontWeight.w900,
+                  fontFamily: GwTheme.numFont,
                 ),
               ),
             ),
@@ -1040,8 +812,8 @@ class _ScoreListTile extends StatelessWidget {
                     score.courseName,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: _ScoreHistoryColors.text1,
+                    style: TextStyle(
+                      color: t.fg,
                       fontSize: 16,
                       fontWeight: FontWeight.w900,
                     ),
@@ -1051,9 +823,49 @@ class _ScoreListTile extends StatelessWidget {
                     '${_formatDate(score.playedAt)} · ${score.overParLabel}',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: _ScoreHistoryColors.text3,
+                    style: TextStyle(
+                      color: t.fg3,
                       fontSize: 13,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(999),
+                      onTap: onEdit,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: t.surface2,
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(
+                            color: t.line,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.edit_location_alt_outlined,
+                              color: t.accent,
+                              size: 14,
+                            ),
+                            const SizedBox(width: 5),
+                            Text(
+                              '골프장명 수정',
+                              style: TextStyle(
+                                color: t.accent,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                   if (badges.isNotEmpty) ...[
@@ -1072,8 +884,8 @@ class _ScoreListTile extends StatelessWidget {
                       companionPreview,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: _ScoreHistoryColors.mint,
+                      style: TextStyle(
+                        color: t.accent,
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
                       ),
@@ -1084,8 +896,8 @@ class _ScoreListTile extends StatelessWidget {
                     '${score.trackingStageDescription} · 세부 기록 $completion% · $trackingSummary',
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: _ScoreHistoryColors.text3,
+                    style: TextStyle(
+                      color: t.fg3,
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
                     ),
@@ -1093,17 +905,265 @@ class _ScoreListTile extends StatelessWidget {
                 ],
               ),
             ),
-            IconButton(
-              tooltip: '삭제',
-              onPressed: onDelete,
-              icon: const Icon(
-                Icons.delete_outline,
-                color: _ScoreHistoryColors.red,
-              ),
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  tooltip: '골프장명 수정',
+                  onPressed: onEdit,
+                  icon: Icon(
+                    Icons.edit_outlined,
+                    color: t.fg2,
+                  ),
+                ),
+                IconButton(
+                  tooltip: '삭제',
+                  onPressed: onDelete,
+                  icon: Icon(
+                    Icons.delete_outline,
+                    color: t.danger,
+                  ),
+                ),
+              ],
             ),
           ],
         ),
       ),
+    );
+  }
+}
+
+class _EditCourseNameDialog extends StatefulWidget {
+  final GolfRoundScore score;
+
+  const _EditCourseNameDialog({required this.score});
+
+  @override
+  State<_EditCourseNameDialog> createState() => _EditCourseNameDialogState();
+}
+
+class _EditCourseNameDialogState extends State<_EditCourseNameDialog> {
+  late final TextEditingController _controller;
+  Timer? _debounce;
+  List<CourseSearchResult> _suggestions = const [];
+  CourseSearchResult? _selectedCourse;
+  bool _isSearching = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.score.courseName);
+    _controller.addListener(_onTextChanged);
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _controller.removeListener(_onTextChanged);
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _onTextChanged() {
+    final keyword = _controller.text.trim();
+    if (_selectedCourse != null && _selectedCourse!.name != keyword) {
+      _selectedCourse = null;
+    }
+
+    _debounce?.cancel();
+    if (keyword.isEmpty) {
+      setState(() {
+        _suggestions = const [];
+        _isSearching = false;
+      });
+      return;
+    }
+
+    _debounce = Timer(const Duration(milliseconds: 260), () {
+      _searchSuggestions(keyword);
+    });
+    setState(() {});
+  }
+
+  Future<void> _searchSuggestions(String keyword) async {
+    if (!mounted) return;
+    setState(() => _isSearching = true);
+    final results =
+        await WeatherApiService.instance.searchCourseSuggestions(keyword);
+    if (!mounted || _controller.text.trim() != keyword) return;
+    setState(() {
+      _suggestions = results;
+      _isSearching = false;
+    });
+  }
+
+  void _selectSuggestion(CourseSearchResult course) {
+    _debounce?.cancel();
+    _controller.removeListener(_onTextChanged);
+    _controller.text = course.name;
+    _controller.selection = TextSelection.collapsed(
+      offset: course.name.length,
+    );
+    _controller.addListener(_onTextChanged);
+    setState(() {
+      _selectedCourse = course;
+      _suggestions = const [];
+      _isSearching = false;
+    });
+  }
+
+  Future<void> _submit() async {
+    final courseName = _controller.text.trim();
+    if (courseName.isEmpty) return;
+
+    final matchedCourse = _selectedCourse?.name == courseName
+        ? _selectedCourse
+        : await WeatherApiService.instance.searchCourse(courseName);
+
+    if (!mounted) return;
+    Navigator.pop(
+      context,
+      GolfRoundScore(
+        id: widget.score.id,
+        scheduleId: widget.score.scheduleId,
+        courseId: matchedCourse?.courseId ?? widget.score.courseId,
+        courseName: courseName,
+        playedAt: widget.score.playedAt,
+        holes: widget.score.holes,
+        companions: widget.score.companions,
+        createdAt: widget.score.createdAt,
+        updatedAt: DateTime.now(),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = GwTheme.of(context);
+    final hasText = _controller.text.trim().isNotEmpty;
+
+    return AlertDialog(
+      backgroundColor: t.surface,
+      title: Text(
+        '골프장명 수정',
+        style: TextStyle(color: t.fg),
+      ),
+      content: SizedBox(
+        width: 420,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'OCR로 저장된 골프장명이 비었거나 다르면 여기서 바로 고칠 수 있어요.',
+              style: TextStyle(
+                color: t.fg3,
+                fontSize: 12,
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _controller,
+              autofocus: true,
+              style: TextStyle(color: t.fg),
+              decoration: const InputDecoration(
+                labelText: '골프장 이름',
+                hintText: '예: 드림파크CC',
+              ),
+              onSubmitted: (_) => hasText ? _submit() : null,
+            ),
+            if (_isSearching)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: LinearProgressIndicator(
+                  minHeight: 2,
+                  backgroundColor: t.surface2,
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    t.accent,
+                  ),
+                ),
+              ),
+            if (_suggestions.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Container(
+                decoration: BoxDecoration(
+                  color: t.surface2,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: t.cardBorder),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: _suggestions.map((course) {
+                    final subtitle = course.nameShort?.trim();
+                    return InkWell(
+                      onTap: () => _selectSuggestion(course),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.flag_outlined,
+                              size: 18,
+                              color: t.accent,
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    course.name,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color: t.fg,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  if (subtitle != null &&
+                                      subtitle.isNotEmpty &&
+                                      subtitle != course.name)
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 2),
+                                      child: Text(
+                                        subtitle,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          color: t.fg3,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }).toList(growable: false),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('취소'),
+        ),
+        FilledButton(
+          onPressed: hasText ? _submit : null,
+          child: const Text('저장'),
+        ),
+      ],
     );
   }
 }
@@ -1170,12 +1230,13 @@ class _OcrGuideCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = GwTheme.of(context);
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: _ScoreHistoryColors.bgElev1,
+        color: t.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _ScoreHistoryColors.divider),
+        border: Border.all(color: t.cardBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1187,32 +1248,32 @@ class _OcrGuideCard extends StatelessWidget {
                 height: 38,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: _ScoreHistoryColors.bgElev2,
+                  color: t.surface2,
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.auto_awesome_outlined,
-                  color: _ScoreHistoryColors.mint,
+                  color: t.accent,
                 ),
               ),
               const SizedBox(width: 12),
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       '스코어카드 OCR 스캔',
                       style: TextStyle(
-                        color: _ScoreHistoryColors.text1,
+                        color: t.fg,
                         fontSize: 16,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
-                    SizedBox(height: 2),
+                    const SizedBox(height: 2),
                     Text(
                       '일정 상세의 스코어카드에서 사진을 읽어 적용',
                       style: TextStyle(
-                        color: _ScoreHistoryColors.text3,
+                        color: t.fg3,
                         fontSize: 12,
                       ),
                     ),
@@ -1230,10 +1291,10 @@ class _OcrGuideCard extends StatelessWidget {
                   child: FilledButton.icon(
                     onPressed: onCreateRound,
                     icon: const Icon(Icons.add_a_photo_outlined),
-                    label: const Text('지난 라운드 OCR 등록'),
+                    label: const Text('OCR 스캐닝'),
                     style: FilledButton.styleFrom(
-                      backgroundColor: _ScoreHistoryColors.mint,
-                      foregroundColor: const Color(0xFF09241F),
+                      backgroundColor: t.accent,
+                      foregroundColor: t.accentInk,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -1247,9 +1308,9 @@ class _OcrGuideCard extends StatelessWidget {
                     icon: const Icon(Icons.help_outline),
                     label: const Text('OCR 가이드'),
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: _ScoreHistoryColors.text1,
-                      side: const BorderSide(
-                        color: _ScoreHistoryColors.divider,
+                      foregroundColor: t.fg,
+                      side: BorderSide(
+                        color: t.line,
                       ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
@@ -1277,6 +1338,7 @@ class _EmptyScoreState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = GwTheme.of(context);
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
@@ -1292,31 +1354,31 @@ class _EmptyScoreState extends StatelessWidget {
                   height: 72,
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
-                    color: _ScoreHistoryColors.bgElev1,
+                    color: t.surface,
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: _ScoreHistoryColors.divider),
+                    border: Border.all(color: t.cardBorder),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.scoreboard_outlined,
-                    color: _ScoreHistoryColors.mint,
+                    color: t.accent,
                     size: 34,
                   ),
                 ),
                 const SizedBox(height: 18),
-                const Text(
+                Text(
                   '아직 저장된 스코어가 없습니다',
                   style: TextStyle(
-                    color: _ScoreHistoryColors.text1,
+                    color: t.fg,
                     fontSize: 18,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
                 const SizedBox(height: 8),
-                const Text(
+                Text(
                   '일정 상세 화면에서 스코어카드를 열고 저장하거나\n지난 라운드를 OCR로 바로 등록하면 기록이 여기에 쌓입니다.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: _ScoreHistoryColors.text3,
+                    color: t.fg3,
                     fontSize: 13,
                     height: 1.45,
                   ),
@@ -1344,6 +1406,7 @@ class _OcrReadySheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = GwTheme.of(context);
     return SafeArea(
       top: false,
       child: Padding(
@@ -1357,24 +1420,24 @@ class _OcrReadySheet extends StatelessWidget {
                 width: 42,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: _ScoreHistoryColors.divider,
+                  color: t.line,
                   borderRadius: BorderRadius.circular(999),
                 ),
               ),
             ),
             const SizedBox(height: 18),
-            const Row(
+            Row(
               children: [
                 Icon(
                   Icons.document_scanner_outlined,
-                  color: _ScoreHistoryColors.mint,
+                  color: t.accent,
                 ),
-                SizedBox(width: 10),
+                const SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     '스코어카드 OCR 가져오기',
                     style: TextStyle(
-                      color: _ScoreHistoryColors.text1,
+                      color: t.fg,
                       fontSize: 19,
                       fontWeight: FontWeight.w900,
                     ),
@@ -1383,10 +1446,10 @@ class _OcrReadySheet extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 12),
-            const Text(
+            Text(
               '일정 상세에서 바로 스캔할 수도 있고, 지난 라운드도 OCR 등록으로 기록을 시작할 수 있습니다.',
               style: TextStyle(
-                color: _ScoreHistoryColors.text2,
+                color: t.fg2,
                 fontSize: 13,
                 height: 1.5,
               ),
@@ -1398,7 +1461,7 @@ class _OcrReadySheet extends StatelessWidget {
             ),
             const _OcrStep(
               number: '2',
-              text: '일정 상세 스코어카드 또는 지난 라운드 OCR 등록에서 이미지 선택',
+              text: '일정 상세 스코어카드 또는 OCR 스캐닝에서 이미지 선택',
             ),
             const _OcrStep(
               number: '3',
@@ -1418,8 +1481,8 @@ class _OcrReadySheet extends StatelessWidget {
                     icon: const Icon(Icons.add_a_photo_outlined),
                     label: const Text('OCR 시작'),
                     style: FilledButton.styleFrom(
-                      backgroundColor: _ScoreHistoryColors.mint,
-                      foregroundColor: const Color(0xFF09241F),
+                      backgroundColor: t.accent,
+                      foregroundColor: t.accentInk,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -1430,9 +1493,9 @@ class _OcrReadySheet extends StatelessWidget {
                 OutlinedButton(
                   onPressed: () => Navigator.pop(context),
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: _ScoreHistoryColors.text1,
-                    side: const BorderSide(
-                      color: _ScoreHistoryColors.divider,
+                    foregroundColor: t.fg,
+                    side: BorderSide(
+                      color: t.line,
                     ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -1460,6 +1523,7 @@ class _OcrStep extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = GwTheme.of(context);
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
@@ -1470,13 +1534,13 @@ class _OcrStep extends StatelessWidget {
             height: 24,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: _ScoreHistoryColors.bgElev2,
+              color: t.surface2,
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
               number,
-              style: const TextStyle(
-                color: _ScoreHistoryColors.mint,
+              style: TextStyle(
+                color: t.accent,
                 fontSize: 12,
                 fontWeight: FontWeight.w900,
               ),
@@ -1486,8 +1550,8 @@ class _OcrStep extends StatelessWidget {
           Expanded(
             child: Text(
               text,
-              style: const TextStyle(
-                color: _ScoreHistoryColors.text2,
+              style: TextStyle(
+                color: t.fg2,
                 fontSize: 13,
                 height: 1.35,
               ),
@@ -1512,12 +1576,13 @@ class _StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = GwTheme.of(context);
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: _ScoreHistoryColors.bgElev1,
+        color: t.surface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: _ScoreHistoryColors.divider),
+        border: Border.all(color: t.cardBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1525,8 +1590,8 @@ class _StatCard extends StatelessWidget {
         children: [
           Text(
             label,
-            style: const TextStyle(
-              color: _ScoreHistoryColors.text3,
+            style: TextStyle(
+              color: t.fg3,
               fontSize: 12,
               fontWeight: FontWeight.w700,
             ),
@@ -1534,10 +1599,11 @@ class _StatCard extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             value,
-            style: const TextStyle(
-              color: _ScoreHistoryColors.text1,
+            style: TextStyle(
+              color: t.fg,
               fontSize: 22,
               fontWeight: FontWeight.w900,
+              fontFamily: GwTheme.numFont,
             ),
           ),
           if (caption != null) ...[
@@ -1546,8 +1612,8 @@ class _StatCard extends StatelessWidget {
               caption!,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: _ScoreHistoryColors.text3,
+              style: TextStyle(
+                color: t.fg3,
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
               ),
@@ -1566,16 +1632,17 @@ class _FeatureChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = GwTheme.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
-        color: _ScoreHistoryColors.bgElev2,
+        color: t.surface2,
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
         label,
-        style: const TextStyle(
-          color: _ScoreHistoryColors.text2,
+        style: TextStyle(
+          color: t.fg2,
           fontSize: 12,
           fontWeight: FontWeight.w800,
         ),
@@ -1591,10 +1658,11 @@ class _SectionTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = GwTheme.of(context);
     return Text(
       title,
-      style: const TextStyle(
-        color: _ScoreHistoryColors.text1,
+      style: TextStyle(
+        color: t.fg,
         fontSize: 18,
         fontWeight: FontWeight.w900,
       ),
@@ -1608,19 +1676,4 @@ String _formatDate(DateTime date) {
 
 bool _isSameDay(DateTime a, DateTime b) {
   return a.year == b.year && a.month == b.month && a.day == b.day;
-}
-
-class _ScoreHistoryColors {
-  static const bgDeep = Color(0xFF0E2A24);
-  static const bgElev1 = Color(0xFF143630);
-  static const bgElev2 = Color(0xFF1B4332);
-  static const brand = Color(0xFF2E7D6B);
-  static const mint = Color(0xFF8DE7C1);
-  static const gold = Color(0xFFFFC857);
-  static const goldBorder = Color(0x66FFC857);
-  static const red = Color(0xFFFF6B6B);
-  static const text1 = Color(0xFFF4FBF8);
-  static const text2 = Color(0xB3F4FBF8);
-  static const text3 = Color(0x73F4FBF8);
-  static const divider = Color(0x14F4FBF8);
 }
