@@ -12,6 +12,8 @@ class SettingsService {
   static const _keyFavoriteSpots = 'setting_favorite_spots';
   static const _keyHomeTutorialSeen = 'setting_home_tutorial_seen';
   static const _keyThemeId = 'setting_theme_id';
+  static const _keySensitivityPrefix = 'setting_sensitivity_';
+  static const _keyLastWhatsNewVersion = 'setting_last_whats_new_version';
 
   Future<int> getRainThreshold() async {
     final prefs = await SharedPreferences.getInstance();
@@ -93,6 +95,28 @@ class SettingsService {
   Future<void> setThemeId(String id) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_keyThemeId, id);
+  }
+
+  /// 라운드 성향 민감도. dimension: rain / wind / cold / heat
+  Future<String> getWeatherSensitivity(String dimension) async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('$_keySensitivityPrefix$dimension') ?? 'normal';
+  }
+
+  Future<void> setWeatherSensitivity(String dimension, String id) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('$_keySensitivityPrefix$dimension', id);
+  }
+
+  /// 마지막으로 업데이트 안내 팝업을 보여준 앱 버전
+  Future<String?> getLastWhatsNewVersion() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_keyLastWhatsNewVersion);
+  }
+
+  Future<void> setLastWhatsNewVersion(String version) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyLastWhatsNewVersion, version);
   }
 
   Future<bool> hasSeenHomeTutorial() async {

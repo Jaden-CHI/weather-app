@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../config/app_config.dart';
 import '../config/api_keys.dart';
 import '../models/weather_data.dart';
+import 'round_suitability.dart';
 
 class CourseSearchResult {
   final String courseId;
@@ -460,7 +461,8 @@ class WeatherApiService {
           if (startHour != null) 'start_hour': startHour,
         },
       );
-      return GolfWeatherData.fromJson(resp.data as Map<String, dynamic>);
+      final data = GolfWeatherData.fromJson(resp.data as Map<String, dynamic>);
+      return RoundSuitability.apply(data, startHour: startHour);
     } on DioException catch (e) {
       if (e.response?.statusCode == 503) {
         // 캐시 없음 — 워커가 아직 수집 전
@@ -500,7 +502,8 @@ class WeatherApiService {
           if (startHour != null) 'start_hour': startHour,
         },
       );
-      return GolfWeatherData.fromJson(resp.data as Map<String, dynamic>);
+      final data = GolfWeatherData.fromJson(resp.data as Map<String, dynamic>);
+      return RoundSuitability.apply(data, startHour: startHour);
     } catch (e) {
       debugPrint('⚠️ custom golf weather failed: $e');
       return null;

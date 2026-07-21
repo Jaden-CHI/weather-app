@@ -6,8 +6,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import '../config/app_config.dart';
 import '../config/app_theme.dart';
+import '../config/whats_new.dart';
 import '../utils/map_html.dart';
 import '../models/golf_event.dart';
 import '../models/restaurant.dart';
@@ -136,8 +138,42 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     if (!mounted || _tutorialCheckStarted) return;
     _tutorialCheckStarted = true;
     final seen = await SettingsService.instance.hasSeenHomeTutorial();
-    if (!mounted || seen) return;
+    if (!mounted) return;
+    if (seen) {
+      await _maybeShowWhatsNew();
+      return;
+    }
     await _showTutorial(markSeen: true);
+    // 신규 설치는 업데이트 안내를 건너뛰고 현재 버전만 기록
+    await _recordCurrentVersion();
+  }
+
+  Future<void> _recordCurrentVersion() async {
+    try {
+      final info = await PackageInfo.fromPlatform();
+      await SettingsService.instance.setLastWhatsNewVersion(info.version);
+    } catch (_) {}
+  }
+
+  /// 업데이트 후 첫 실행이면 새 기능 안내 팝업 표시
+  Future<void> _maybeShowWhatsNew() async {
+    String version;
+    try {
+      version = (await PackageInfo.fromPlatform()).version;
+    } catch (_) {
+      return;
+    }
+    final settings = SettingsService.instance;
+    final lastSeen = await settings.getLastWhatsNewVersion();
+    if (lastSeen == version) return;
+    // 팝업 실패/중복 방지를 위해 표시 전에 먼저 기록
+    await settings.setLastWhatsNewVersion(version);
+    final items = WhatsNew.itemsFor(version);
+    if (items == null || items.isEmpty || !mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (context) => WhatsNewDialog(version: version, items: items),
+    );
   }
 
   Future<void> _showTutorial({bool markSeen = false}) async {

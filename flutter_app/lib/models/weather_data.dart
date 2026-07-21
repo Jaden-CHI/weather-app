@@ -28,6 +28,22 @@ class GolfWeatherData {
     required this.screenGolfNearby,
   });
 
+  /// 적합도 판정만 바꾼 사본 (사용자 성향 반영용)
+  GolfWeatherData withRecommendation(AiRecommendation rec) => GolfWeatherData(
+        courseId: courseId,
+        courseName: courseName,
+        region: region,
+        golfzonLinked: golfzonLinked,
+        golfzonBookingUrl: golfzonBookingUrl,
+        dday: dday,
+        forecastDate: forecastDate,
+        lastUpdated: lastUpdated,
+        aiRecommendation: rec,
+        cancellationPolicy: cancellationPolicy,
+        forecast: forecast,
+        screenGolfNearby: screenGolfNearby,
+      );
+
   factory GolfWeatherData.fromJson(Map<String, dynamic> json) =>
       GolfWeatherData(
         courseId: json['course_id'] as String,
