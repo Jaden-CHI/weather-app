@@ -452,16 +452,29 @@ class WeatherApiService {
     String courseId, {
     int dday = 0,
     int? startHour,
+    int? startMinute,
   }) async {
+    if (dday < 0 || dday > 7) return null;
     try {
       final resp = await _dio.get(
         '/api/v1/golf/courses/$courseId/weather',
         queryParameters: {
           'dday': dday,
           if (startHour != null) 'start_hour': startHour,
+          if (startMinute != null) 'start_minute': startMinute,
         },
       );
-      final data = GolfWeatherData.fromJson(resp.data as Map<String, dynamic>);
+      final json = resp.data as Map<String, dynamic>;
+      final source = json['source']?.toString().toUpperCase() ?? '';
+      if (source.contains('MOCK')) return null;
+      final data = GolfWeatherData.fromJson(json);
+      final koreaNow = DateTime.now().toUtc().add(const Duration(hours: 9));
+      final target = DateTime.utc(koreaNow.year, koreaNow.month, koreaNow.day + dday);
+      final expected = target.toIso8601String().substring(0, 10);
+      if (data.forecastDate != expected || data.forecast.isEmpty ||
+          data.forecast.any((f) => f.date != expected.replaceAll('-', ''))) {
+        return null;
+      }
       return RoundSuitability.apply(data, startHour: startHour);
     } on DioException catch (e) {
       if (e.response?.statusCode == 503) {
@@ -490,7 +503,9 @@ class WeatherApiService {
     required String courseName,
     int dday = 0,
     int? startHour,
+    int? startMinute,
   }) async {
+    if (dday < 0 || dday > 7) return null;
     try {
       final resp = await _dio.get(
         '/api/v1/golf/custom/weather',
@@ -500,9 +515,20 @@ class WeatherApiService {
           'name': courseName,
           'dday': dday,
           if (startHour != null) 'start_hour': startHour,
+          if (startMinute != null) 'start_minute': startMinute,
         },
       );
-      final data = GolfWeatherData.fromJson(resp.data as Map<String, dynamic>);
+      final json = resp.data as Map<String, dynamic>;
+      final source = json['source']?.toString().toUpperCase() ?? '';
+      if (source.contains('MOCK')) return null;
+      final data = GolfWeatherData.fromJson(json);
+      final koreaNow = DateTime.now().toUtc().add(const Duration(hours: 9));
+      final target = DateTime.utc(koreaNow.year, koreaNow.month, koreaNow.day + dday);
+      final expected = target.toIso8601String().substring(0, 10);
+      if (data.forecastDate != expected || data.forecast.isEmpty ||
+          data.forecast.any((f) => f.date != expected.replaceAll('-', ''))) {
+        return null;
+      }
       return RoundSuitability.apply(data, startHour: startHour);
     } catch (e) {
       debugPrint('⚠️ custom golf weather failed: $e');

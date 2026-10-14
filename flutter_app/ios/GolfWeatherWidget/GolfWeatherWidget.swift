@@ -50,9 +50,9 @@ struct WeatherProvider: TimelineProvider {
         return WeatherEntry(
             date: Date(),
             ddayLabel:        defaults?.string(forKey: "dday_label") ?? "",
-            courseName:       defaults?.string(forKey: "course_name") ?? "일정 없음",
+            courseName:       defaults?.string(forKey: "course_name") ?? "Golf Windy",
             status:           defaults?.string(forKey: "status") ?? "NONE",
-            message:          defaults?.string(forKey: "status_message") ?? "켜자마자 날씨",
+            message:          defaults?.string(forKey: "status_message") ?? "앱을 열어 라운드를 등록해 주세요",
             temp:             defaults?.string(forKey: "temp") ?? "",
             rainProb:         defaults?.string(forKey: "rain_prob") ?? "",
             windSpeed:        defaults?.string(forKey: "wind_speed") ?? "",
@@ -184,6 +184,20 @@ struct LockScreenWeatherView: View {
     }
 }
 
+/// The lock-screen family needs its own compact, legible layout.
+struct AdaptiveWeatherWidgetView: View {
+    let entry: WeatherEntry
+    @Environment(\.widgetFamily) var family
+
+    var body: some View {
+        if family == .accessoryRectangular {
+            LockScreenWeatherView(entry: entry)
+        } else {
+            GolfWeatherWidgetView(entry: entry)
+        }
+    }
+}
+
 // ── Widget 설정 ────────────────────────────────────────────────
 @main
 struct GolfWeatherWidget: Widget {
@@ -192,14 +206,14 @@ struct GolfWeatherWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: WeatherProvider()) { entry in
             if #available(iOS 17.0, *) {
-                GolfWeatherWidgetView(entry: entry)
+                AdaptiveWeatherWidgetView(entry: entry)
                     .containerBackground(entry.status.statusBg, for: .widget)
             } else {
-                GolfWeatherWidgetView(entry: entry)
+                AdaptiveWeatherWidgetView(entry: entry)
             }
         }
-        .configurationDisplayName("켜자마자 날씨")
-        .description("골프·낚시 일정 날씨 & 취소 권고")
+        .configurationDisplayName("Golf Windy")
+        .description("다음 라운드 날씨 · 눌러서 앱 열기")
         .supportedFamilies([
             .systemMedium,
             .accessoryRectangular,  // 잠금화면 (iOS 16+)

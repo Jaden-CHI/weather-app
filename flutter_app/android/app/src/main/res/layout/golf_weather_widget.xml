@@ -18,7 +18,7 @@
             android:id="@+id/tv_dday"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="D-3"
+            android:text=""
             android:textColor="#FFFFFF"
             android:textSize="18sp"
             android:textStyle="bold"
@@ -26,7 +26,7 @@
             android:paddingHorizontal="8dp"
             android:paddingVertical="3dp"/>
 
-        <View
+        <TextView
             android:id="@+id/status_dot"
             android:layout_width="8dp"
             android:layout_height="8dp"
@@ -38,7 +38,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="용인 컨트리클럽"
+            android:text="Golf Windy"
             android:textColor="#FFFFFF"
             android:textSize="14sp"
             android:textStyle="bold"
@@ -52,7 +52,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
-        android:text="라운딩 최적 날씨입니다"
+        android:text="앱을 열어 라운드를 등록해 주세요"
         android:textColor="#B0BEC5"
         android:textSize="12sp"/>
 
@@ -68,7 +68,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="18~24°C"
+            android:text=""
             android:textColor="#ECEFF1"
             android:textSize="12sp"/>
 
@@ -77,7 +77,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="🌧 20%"
+            android:text=""
             android:textColor="#90CAF9"
             android:textSize="12sp"/>
 
@@ -86,7 +86,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="💨 3.2m/s"
+            android:text=""
             android:textColor="#B0BEC5"
             android:textSize="12sp"/>
     </LinearLayout>
@@ -97,7 +97,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="6dp"
-        android:text="무료 취소 가능 — 23시간 남음"
+        android:text="눌러서 Golf Windy 열기"
         android:textColor="#A5D6A7"
         android:textSize="11sp"/>
 

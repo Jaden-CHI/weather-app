@@ -128,6 +128,19 @@ class CancellationPolicy {
   });
 
   factory CancellationPolicy.fromJson(Map<String, dynamic> json) {
+    // Older servers may return sample cancellation terms. Never display those
+    // as a verified free-cancellation deadline, including in shared widgets.
+    if (json['verified'] != true) {
+      return const CancellationPolicy(
+        urgency: 'NORMAL',
+        message: '취소 규정은 예약처에 확인해 주세요',
+        sameDayPenalty: '',
+        noshowPenalty: '',
+        rainCancel: RainCancelPolicy(available: false, condition: '', refundRule: ''),
+        policySource: 'UNVERIFIED',
+      );
+    }
+
     final rc = json['rain_cancel'] as Map<String, dynamic>? ?? {};
     return CancellationPolicy(
       canCancelFree: json['can_cancel_free'] as bool?,
