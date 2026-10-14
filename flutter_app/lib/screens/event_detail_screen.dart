@@ -70,14 +70,19 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     });
     try {
       var event = widget.golfEvent;
+      if (event.dday < 0 || event.dday > 7) {
+        _golfData = null;
+        return;
+      }
       String? courseId = event.courseId;
       courseId ??= await _api.searchCourseId(event.courseName ?? event.title);
 
       if (courseId != null && courseId.isNotEmpty) {
         _golfData = await _api.getGolfWeather(
           courseId,
-          dday: event.dday.clamp(0, 7),
+          dday: event.dday,
           startHour: event.startDate.hour,
+          startMinute: event.startDate.minute,
         );
       } else {
         double? lat = event.lat;
@@ -104,8 +109,9 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
             lat: lat,
             lng: lng,
             courseName: event.courseName ?? event.location ?? event.title,
-            dday: event.dday.clamp(0, 7),
+            dday: event.dday,
             startHour: event.startDate.hour,
+            startMinute: event.startDate.minute,
           );
         } else {
           _golfData = null;
@@ -548,6 +554,11 @@ class _CustomGolfDetailBody extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
       children: [
+        if (event.dday > 7) ...[
+          Text('아직 예보 제공 전 · 라운드 7일 전부터 확인하세요',
+              style: TextStyle(color: t.fg2)),
+          const SizedBox(height: 16),
+        ],
         Container(
           padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(

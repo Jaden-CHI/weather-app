@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../config/app_theme.dart';
 import '../services/notification_service.dart';
+import '../services/round_suitability.dart';
 import '../services/settings_service.dart';
 import '../services/app_schedule_service.dart';
 import 'release_qa_screen.dart';
@@ -28,6 +29,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   int _notifyHoursBefore = 24;
   bool _loading = true;
   String? _userToken;
+  final _sensitivities = <String, WeatherSensitivity>{
+    'rain': WeatherSensitivity.normal,
+    'wind': WeatherSensitivity.normal,
+    'cold': WeatherSensitivity.normal,
+    'heat': WeatherSensitivity.normal,
+  };
 
   @override
   void initState() {
@@ -40,6 +47,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final wind = await _settings.getWindThreshold();
     final hours = await _settings.getNotifyHoursBefore();
     final token = await NotificationService.instance.userToken;
+    for (final dim in _sensitivities.keys.toList()) {
+      _sensitivities[dim] =
+          WeatherSensitivity.byId(await _settings.getWeatherSensitivity(dim));
+    }
     if (mounted) {
       setState(() {
         _rainThreshold = rain;
@@ -49,6 +60,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         _loading = false;
       });
     }
+  }
+
+  Future<void> _setSensitivity(String dim, WeatherSensitivity s) async {
+    setState(() => _sensitivities[dim] = s);
+    await _settings.setWeatherSensitivity(dim, s.id);
   }
 
   @override
@@ -116,6 +132,47 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     const SizedBox(height: 4),
                     Text(
                       '이 임계값 초과 시 YELLOW/RED 권고가 발령됩니다',
+                      style: TextStyle(color: t.fg3, fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+              const _SectionHeader('라운드 성향'),
+              _SettingsCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _SensitivityRow(
+                      icon: Icons.water_drop_outlined,
+                      label: '비 민감도',
+                      value: _sensitivities['rain']!,
+                      onChanged: (s) => _setSensitivity('rain', s),
+                    ),
+                    Divider(color: t.line, height: 22),
+                    _SensitivityRow(
+                      icon: Icons.air_rounded,
+                      label: '바람 민감도',
+                      value: _sensitivities['wind']!,
+                      onChanged: (s) => _setSensitivity('wind', s),
+                    ),
+                    Divider(color: t.line, height: 22),
+                    _SensitivityRow(
+                      icon: Icons.ac_unit_rounded,
+                      label: '추위 민감도',
+                      value: _sensitivities['cold']!,
+                      onChanged: (s) => _setSensitivity('cold', s),
+                    ),
+                    Divider(color: t.line, height: 22),
+                    _SensitivityRow(
+                      icon: Icons.wb_sunny_outlined,
+                      label: '더위 민감도',
+                      value: _sensitivities['heat']!,
+                      onChanged: (s) => _setSensitivity('heat', s),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      '민감도가 높을수록 라운드 적합도가 더 보수적으로 판정됩니다',
                       style: TextStyle(color: t.fg3, fontSize: 12),
                     ),
                   ],
@@ -407,6 +464,74 @@ class _ThemeCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+// ── 라운드 성향 민감도 선택 행 ─────────────────────────────────
+class _SensitivityRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final WeatherSensitivity value;
+  final ValueChanged<WeatherSensitivity> onChanged;
+
+  const _SensitivityRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final t = GwTheme.of(context);
+    return Row(
+      children: [
+        Icon(icon, size: 18, color: t.fg2),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            label,
+            style: TextStyle(
+                color: t.fg, fontSize: 14, fontWeight: FontWeight.w600),
+          ),
+        ),
+        Container(
+          padding: const EdgeInsets.all(3),
+          decoration: BoxDecoration(
+            color: t.surface2,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: t.cardBorder),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: WeatherSensitivity.values.map((s) {
+              final selected = s == value;
+              return GestureDetector(
+                onTap: () => onChanged(s),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 150),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: selected ? t.accent : Colors.transparent,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    s.label,
+                    style: TextStyle(
+                      color: selected ? t.accentInk : t.fg2,
+                      fontSize: 12,
+                      fontWeight:
+                          selected ? FontWeight.w700 : FontWeight.w500,
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+      ],
     );
   }
 }

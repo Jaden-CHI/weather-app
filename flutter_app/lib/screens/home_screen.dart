@@ -6,8 +6,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import '../config/app_config.dart';
 import '../config/app_theme.dart';
+import '../config/whats_new.dart';
 import '../utils/map_html.dart';
 import '../models/golf_event.dart';
 import '../models/restaurant.dart';
@@ -15,7 +17,6 @@ import '../models/weather_data.dart';
 import '../services/app_schedule_service.dart';
 import '../services/restaurant_service.dart';
 import '../services/weather_api_service.dart';
-import '../services/background_service.dart';
 import '../services/settings_service.dart';
 import '../services/widget_sync_service.dart';
 import '../widgets/wx_icon.dart';
@@ -52,6 +53,7 @@ _Status _statusOf(GwTheme t, String s) => switch (s) {
 
 // ── 일정별 날씨 로딩 (히어로/리스트 공용) ──────────────────────
 Future<GolfWeatherData?> _loadEventWeather(GolfEvent original) async {
+  if (original.dday < 0 || original.dday > 7) return null;
   final api = WeatherApiService.instance;
   var event = original;
   var courseId = event.courseId;
@@ -62,8 +64,9 @@ Future<GolfWeatherData?> _loadEventWeather(GolfEvent original) async {
   if (courseId != null && courseId.isNotEmpty) {
     return api.getGolfWeather(
       courseId,
-      dday: event.dday.clamp(0, 7),
+      dday: event.dday,
       startHour: event.startDate.hour,
+      startMinute: event.startDate.minute,
     );
   }
 
@@ -89,8 +92,9 @@ Future<GolfWeatherData?> _loadEventWeather(GolfEvent original) async {
     lat: lat,
     lng: lng,
     courseName: event.courseName ?? event.location ?? event.title,
-    dday: event.dday.clamp(0, 7),
+    dday: event.dday,
     startHour: event.startDate.hour,
+    startMinute: event.startDate.minute,
   );
 }
 
@@ -117,7 +121,8 @@ class HomeScreen extends ConsumerStatefulWidget {
   ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends ConsumerState<HomeScreen> {
+class _HomeScreenState extends ConsumerState<HomeScreen>
+    with WidgetsBindingObserver {
   int _navIdx = 0; // 하단 탭
   bool _tutorialCheckStarted = false;
   bool _showingTutorial = false;
@@ -125,19 +130,72 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    BackgroundService.runOnce();
-    WidgetSyncService.instance.syncNextGolfEvent();
+    WidgetsBinding.instance.addObserver(this);
+    AppScheduleService.changes.addListener(_syncWidget);
+    _syncWidget();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _maybeShowTutorial();
     });
+  }
+
+  void _syncWidget() {
+    WidgetSyncService.instance.syncNextGolfEvent();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _syncWidget();
+    }
+  }
+
+  @override
+  void dispose() {
+    AppScheduleService.changes.removeListener(_syncWidget);
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
   }
 
   Future<void> _maybeShowTutorial() async {
     if (!mounted || _tutorialCheckStarted) return;
     _tutorialCheckStarted = true;
     final seen = await SettingsService.instance.hasSeenHomeTutorial();
-    if (!mounted || seen) return;
+    if (!mounted) return;
+    if (seen) {
+      await _maybeShowWhatsNew();
+      return;
+    }
     await _showTutorial(markSeen: true);
+    // 신규 설치는 업데이트 안내를 건너뛰고 현재 버전만 기록
+    await _recordCurrentVersion();
+  }
+
+  Future<void> _recordCurrentVersion() async {
+    try {
+      final info = await PackageInfo.fromPlatform();
+      await SettingsService.instance.setLastWhatsNewVersion(info.version);
+    } catch (_) {}
+  }
+
+  /// 업데이트 후 첫 실행이면 새 기능 안내 팝업 표시
+  Future<void> _maybeShowWhatsNew() async {
+    String version;
+    try {
+      version = (await PackageInfo.fromPlatform()).version;
+    } catch (_) {
+      return;
+    }
+    final settings = SettingsService.instance;
+    final lastSeen = await settings.getLastWhatsNewVersion();
+    if (lastSeen == version) return;
+    // 팝업 실패/중복 방지를 위해 표시 전에 먼저 기록
+    await settings.setLastWhatsNewVersion(version);
+    final items = WhatsNew.itemsFor(version);
+    if (items == null || items.isEmpty || !mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (context) => WhatsNewDialog(version: version, items: items),
+    );
   }
 
   Future<void> _showTutorial({bool markSeen = false}) async {
@@ -865,7 +923,10 @@ class _HomeHeroState extends State<_HomeHero> {
                 ] else ...[
                   const SizedBox(height: 8),
                   _weatherResolved
-                      ? const _WxUnavailable()
+                      ? (e.dday > 7
+                          ? Text('아직 예보 제공 전 · 라운드 7일 전부터 확인하세요',
+                              style: TextStyle(color: t.fg2, fontSize: 13))
+                          : const _WxUnavailable())
                       : const _WxLoading(),
                 ],
                 if (_wx != null && status == 'GREEN') ...[
@@ -1580,7 +1641,6 @@ class _AllScheduleList extends ConsumerWidget {
     try {
       await AppScheduleService().deleteSchedule(event.id);
       ref.invalidate(golfEventsProvider);
-      await WidgetSyncService.instance.syncNextGolfEvent();
 
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
