@@ -55,6 +55,21 @@ class LocationSearchResult {
   });
 }
 
+/// 코스 DB에 없는 골프장을 포털(카카오 장소 검색)에서 찾은 결과
+class PortalGolfPlace {
+  final String name;
+  final String? address;
+  final double lat;
+  final double lng;
+
+  const PortalGolfPlace({
+    required this.name,
+    this.address,
+    required this.lat,
+    required this.lng,
+  });
+}
+
 class WeatherCacheStatus {
   final String courseId;
   final String courseName;
@@ -287,6 +302,55 @@ class WeatherApiService {
       debugPrint('⚠️ location geocode failed for "$trimmed": $e');
       return null;
     }
+  }
+
+  /// 코스 DB에 없는 골프장을 카카오 장소 검색으로 조회.
+  /// 필드 골프장만 채택 (스크린골프·연습장·용품점·아카데미 제외).
+  Future<PortalGolfPlace?> searchPortalGolfPlace(String query) async {
+    final trimmed = query.trim();
+    if (trimmed.isEmpty || ApiKeys.kakaoMapKey.trim().isEmpty) return null;
+
+    final dio = Dio(
+      BaseOptions(
+        baseUrl: 'https://dapi.kakao.com',
+        connectTimeout: const Duration(seconds: 6),
+        receiveTimeout: const Duration(seconds: 8),
+        headers: {'Authorization': 'KakaoAK ${ApiKeys.kakaoMapKey}'},
+      ),
+    );
+
+    try {
+      final resp = await dio.get(
+        '/v2/local/search/keyword.json',
+        queryParameters: {'query': trimmed, 'size': 5},
+      );
+      final documents = resp.data['documents'] as List<dynamic>? ?? [];
+      for (final raw in documents) {
+        final doc = Map<String, dynamic>.from(raw as Map);
+        final category = doc['category_name']?.toString() ?? '';
+        if (!category.contains('골프')) continue;
+        if (RegExp(r'스크린|연습|용품|아카데미|레슨').hasMatch(category)) continue;
+
+        final lat = double.tryParse(doc['y']?.toString() ?? '');
+        final lng = double.tryParse(doc['x']?.toString() ?? '');
+        final name = doc['place_name']?.toString() ?? '';
+        if (lat == null || lng == null || name.isEmpty) continue;
+
+        final roadAddress = doc['road_address_name']?.toString();
+        final address = (roadAddress?.isNotEmpty ?? false)
+            ? roadAddress
+            : doc['address_name']?.toString();
+        return PortalGolfPlace(
+          name: name,
+          address: (address?.isEmpty ?? true) ? null : address,
+          lat: lat,
+          lng: lng,
+        );
+      }
+    } catch (e) {
+      debugPrint('⚠️ portal golf place search failed for "$trimmed": $e');
+    }
+    return null;
   }
 
   Future<LocationSearchResult?> _geocodeWithKakao(String query) async {

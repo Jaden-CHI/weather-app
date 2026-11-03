@@ -35,6 +35,7 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
   Timer? _courseSearchDebounce;
   List<CourseSearchResult> _courseSuggestions = [];
   CourseSearchResult? _selectedCourse;
+  PortalGolfPlace? _portalPlace; // 캘린더 가져오기에서 포털 검색으로 찾은 DB 외 골프장
   bool _isSearchingCourses = false;
   bool _isImportingCalendar = false;
 
@@ -183,6 +184,14 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
 
         lat = course?.lat ?? lat;
         lng = course?.lng ?? lng;
+      }
+
+      // 포털 검색으로 찾은 골프장이면 좌표를 그대로 사용 (이름이 바뀌지 않은 경우만)
+      if ((lat == null || lng == null) &&
+          _portalPlace != null &&
+          _portalPlace!.name == courseName) {
+        lat = _portalPlace!.lat;
+        lng = _portalPlace!.lng;
       }
 
       if (lat == null || lng == null) {
@@ -406,12 +415,28 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
                                     fontSize: 12,
                                   ),
                                 ),
+                                if (candidate.displayAddress != null) ...[
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    candidate.displayAddress!,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color: t.fg3,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
                                 if (!matched) ...[
                                   const SizedBox(height: 8),
                                   Text(
-                                    '골프장명은 저장 전 한 번 확인해 주세요.',
+                                    candidate.portalPlace != null
+                                        ? '포털 검색으로 찾은 골프장이에요 (DB 외) — 주소를 확인해 주세요.'
+                                        : '골프장명은 저장 전 한 번 확인해 주세요.',
                                     style: TextStyle(
-                                      color: t.warn,
+                                      color: candidate.portalPlace != null
+                                          ? t.accent
+                                          : t.warn,
                                       fontSize: 12,
                                       fontWeight: FontWeight.w600,
                                     ),
@@ -453,6 +478,7 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
       );
       _selectedTime = TimeOfDay.fromDateTime(candidate.startAt);
       _selectedCourse = course;
+      _portalPlace = candidate.portalPlace;
       _courseSuggestions = [];
       _isSearchingCourses = false;
       _titleController.text = candidate.title;

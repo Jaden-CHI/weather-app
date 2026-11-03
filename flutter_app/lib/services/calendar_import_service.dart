@@ -12,6 +12,7 @@ class CalendarGolfImportCandidate {
     this.description,
     this.courseKeyword,
     this.matchedCourse,
+    this.portalPlace,
   });
 
   final String title;
@@ -22,14 +23,23 @@ class CalendarGolfImportCandidate {
   final String? courseKeyword;
   final CourseSearchResult? matchedCourse;
 
+  /// 코스 DB에 없을 때 포털(카카오 장소 검색)에서 찾은 골프장
+  final PortalGolfPlace? portalPlace;
+
   String get displayCourseName =>
-      matchedCourse?.name ?? courseKeyword ?? location ?? title;
+      matchedCourse?.name ??
+      portalPlace?.name ??
+      courseKeyword ??
+      location ??
+      title;
 
   String? get displayAddress {
     final trimmed = location?.trim();
-    if (trimmed == null || trimmed.isEmpty) return null;
-    if (matchedCourse != null && trimmed == matchedCourse!.name) return null;
-    return trimmed;
+    if (trimmed != null && trimmed.isNotEmpty) {
+      if (matchedCourse != null && trimmed == matchedCourse!.name) return null;
+      return trimmed;
+    }
+    return portalPlace?.address;
   }
 }
 
@@ -131,6 +141,9 @@ class CalendarImportService {
 
     for (final candidate in rawCandidates.take(20)) {
       final matchedCourse = await _matchCourse(candidate);
+      // 코스 DB에 없으면 포털 장소 검색으로 이름·주소·좌표 보강
+      final portalPlace =
+          matchedCourse == null ? await _searchPortalPlace(candidate) : null;
       enriched.add(
         CalendarGolfImportCandidate(
           title: candidate.title,
@@ -140,6 +153,7 @@ class CalendarImportService {
           description: candidate.description,
           courseKeyword: candidate.courseKeyword,
           matchedCourse: matchedCourse,
+          portalPlace: portalPlace,
         ),
       );
     }
@@ -213,6 +227,28 @@ class CalendarImportService {
       if (!seen.add(query)) continue;
       final course = await WeatherApiService.instance.searchCourse(query);
       if (course != null) return course;
+    }
+
+    return null;
+  }
+
+  Future<PortalGolfPlace?> _searchPortalPlace(
+    CalendarGolfImportCandidate candidate,
+  ) async {
+    final queries = <String>[
+      if (candidate.courseKeyword?.trim().isNotEmpty ?? false)
+        candidate.courseKeyword!.trim(),
+      if (candidate.location?.trim().isNotEmpty ?? false)
+        candidate.location!.trim(),
+    ];
+
+    final seen = <String>{};
+    for (final query in queries) {
+      if (!seen.add(query)) continue;
+      final place = await WeatherApiService.instance.searchPortalGolfPlace(
+        query,
+      );
+      if (place != null) return place;
     }
 
     return null;
