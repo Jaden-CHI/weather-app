@@ -125,7 +125,7 @@ class RestaurantNavigationService {
     await _launchWithFallback(
       context,
       appUri: appUri,
-      fallbackUri: _kakaoWebUri(restaurant),
+      fallbackUri: _naverWebUri(restaurant),
     );
   }
 
@@ -141,6 +141,13 @@ class RestaurantNavigationService {
 
   static Uri _kakaoWebUri(Restaurant restaurant) => Uri.parse(
         'https://map.kakao.com/link/to/${Uri.encodeComponent(restaurant.name)},${restaurant.lat},${restaurant.lng}',
+      );
+
+  static Uri _naverWebUri(Restaurant restaurant) => Uri.parse(
+        'https://m.map.naver.com/route.nhn?menu=route'
+        '&ename=${Uri.encodeComponent(restaurant.name)}'
+        '&ex=${restaurant.lng}&ey=${restaurant.lat}'
+        '&pathType=0&showMap=true',
       );
 
   static Future<void> _launchWithFallback(
