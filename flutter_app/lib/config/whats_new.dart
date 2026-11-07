@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import '../l10n/l10n.dart';
 import 'app_theme.dart';
 
 /// 버전별 업데이트 안내 내용.
@@ -6,7 +8,11 @@ import 'app_theme.dart';
 /// 새 버전 출시 시 여기에 항목을 추가하면 업데이트 후 첫 실행 때
 /// 안내 팝업이 표시된다. 항목이 없는 버전은 팝업을 건너뛴다.
 class WhatsNew {
-  static const entries = <String, List<String>>{
+  static const _entriesKo = <String, List<String>>{
+    '1.4.0': [
+      'English 지원 — 기기 언어에 따라 자동 전환되고, 설정에서 직접 고를 수도 있어요',
+      '안정성 개선 및 자잘한 버그 수정',
+    ],
     '1.3.0': [
       'DB에 없는 골프장도 OK — 캘린더 가져오기에서 포털 검색으로 골프장 이름·주소·위치를 자동으로 찾아드립니다',
       '캘린더 가져오기 정확도 개선 및 길찾기에서 네이버 지도 연결 수정',
@@ -21,9 +27,30 @@ class WhatsNew {
     ],
   };
 
+  static const _entriesEn = <String, List<String>>{
+    '1.4.0': [
+      'English support — the app now follows your device language, or pick one manually in Settings',
+      'Stability improvements and minor bug fixes',
+    ],
+    '1.3.0': [
+      'Courses outside our database are now covered — calendar import finds the course name, address and location via portal search',
+      'More accurate calendar import, plus a fix for Naver Map navigation',
+    ],
+    '1.2.1': [
+      'More accurate calendar import — non-golf events no longer sneak in',
+      'More reliable home widget updates and round weather guidance',
+    ],
+    '1.2.0': [
+      'Round preferences — set your sensitivity to rain, wind, cold and heat, and round suitability adapts to you',
+      'A what\'s-new popup now appears after each update',
+    ],
+  };
+
   /// '1.2.0+25' → '1.2.0' 형태로 정규화 후 해당 버전 안내 반환
-  static List<String>? itemsFor(String version) =>
-      entries[version.split('+').first];
+  static List<String>? itemsFor(String version, {String lang = 'ko'}) {
+    final entries = lang == 'ko' ? _entriesKo : _entriesEn;
+    return entries[version.split('+').first];
+  }
 }
 
 /// 업데이트 안내 다이얼로그
@@ -36,6 +63,7 @@ class WhatsNewDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = GwTheme.of(context);
+    final l10n = context.l10n;
     return Dialog(
       backgroundColor: Colors.transparent,
       insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
@@ -68,7 +96,7 @@ class WhatsNewDialog extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        '업데이트 안내',
+                        l10n.whatsNewTitle,
                         style: TextStyle(
                           color: t.fg,
                           fontSize: 20,
@@ -77,7 +105,7 @@ class WhatsNewDialog extends StatelessWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'v$version의 새로운 기능이에요.',
+                        l10n.whatsNewSubtitle(version),
                         style: TextStyle(color: t.fg3, fontSize: 12),
                       ),
                     ],
@@ -119,7 +147,7 @@ class WhatsNewDialog extends StatelessWidget {
                   foregroundColor: t.accentInk,
                   padding: const EdgeInsets.symmetric(vertical: 14),
                 ),
-                child: const Text('확인'),
+                child: Text(l10n.commonConfirm),
               ),
             ),
           ],

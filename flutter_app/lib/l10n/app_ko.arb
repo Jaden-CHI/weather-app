@@ -1,0 +1,149 @@
+{
+  "@@locale": "ko",
+
+  "appTitle": "Golf Windy",
+
+  "commonConfirm": "확인",
+  "commonCancel": "취소",
+  "commonSave": "저장",
+  "commonDelete": "삭제",
+  "commonEdit": "수정",
+  "commonClose": "닫기",
+  "commonRetry": "다시 시도",
+  "commonSearch": "검색",
+  "commonLoading": "불러오는 중…",
+  "commonError": "오류가 발생했어요",
+  "commonNone": "없음",
+  "commonDone": "완료",
+  "commonNext": "다음",
+  "commonSkip": "건너뛰기",
+  "commonStart": "시작하기",
+
+  "navHome": "홈",
+  "navSchedule": "일정",
+  "navMap": "지도",
+  "navSettings": "설정",
+
+  "setTitle": "설정",
+  "setSectionTheme": "테마 · THEME",
+  "setSectionThresholds": "알림 임계값",
+  "setRainThresholdLabel": "강수 확률 기준",
+  "setWindThresholdLabel": "풍속 기준",
+  "setThresholdHint": "이 임계값 초과 시 YELLOW/RED 권고가 발령됩니다",
+  "setSectionRoundProfile": "라운드 성향",
+  "setSensitivityRain": "비 민감도",
+  "setSensitivityWind": "바람 민감도",
+  "setSensitivityCold": "추위 민감도",
+  "setSensitivityHeat": "더위 민감도",
+  "setSensitivityHint": "민감도가 높을수록 라운드 적합도가 더 보수적으로 판정됩니다",
+  "setSectionNotifyTiming": "알림 타이밍",
+  "setNotifyTimingQuestion": "일정 몇 시간 전부터 알림을 받을까요?",
+  "setHoursBefore": "{h}시간 전",
+  "@setHoursBefore": {
+    "placeholders": {
+      "h": {"type": "int"}
+    }
+  },
+  "setSectionNotifyPermission": "알림 권한",
+  "setNotifyPermissionButton": "알림 권한 요청 / 재등록",
+  "setNotifyGranted": "알림 권한이 허용되었습니다.",
+  "setNotifyDenied": "알림 권한이 거부되었습니다.",
+  "setSectionHelp": "도움말",
+  "setHelpDesc": "핵심 기능 안내를 다시 열 수 있습니다.",
+  "setHelpTutorialButton": "튜토리얼 다시 보기",
+  "setSectionScore": "스코어",
+  "setScoreDesc": "OCR 스캔과 지난 라운드 기록 관리를 여기서 바로 열 수 있습니다.",
+  "setScoreOpenButton": "스코어 관리 열기",
+  "setSectionDevice": "디바이스 정보",
+  "setDeviceTokenLabel": "익명 디바이스 토큰",
+  "setDeviceTokenLoading": "로딩 중...",
+  "setDevicePrivacyNote": "이 앱은 개인정보를 수집하지 않습니다. 위 토큰은 알림 발송에만 사용되는 임의 식별자입니다.",
+
+  "setLanguageSection": "언어",
+  "setLanguageTitle": "앱 언어",
+  "setLanguageSystem": "시스템 설정 따름",
+  "setLanguageKorean": "한국어",
+  "setLanguageEnglish": "English",
+
+  "whatsNewTitle": "업데이트 안내",
+  "whatsNewSubtitle": "v{version}의 새로운 기능이에요.",
+  "@whatsNewSubtitle": {
+    "placeholders": {
+      "version": {"type": "String"}
+    }
+  },
+
+  "suitRed": "D-{dday} 취소 권고 — {label} 주의보",
+  "@suitRed": {
+    "placeholders": {
+      "dday": {"type": "int"},
+      "label": {"type": "String"}
+    }
+  },
+  "suitYellow": "D-{dday} 주의 — {label} 준비",
+  "@suitYellow": {
+    "placeholders": {
+      "dday": {"type": "int"},
+      "label": {"type": "String"}
+    }
+  },
+  "suitGreen": "D-{dday} 라운딩 적합",
+  "@suitGreen": {
+    "placeholders": {
+      "dday": {"type": "int"}
+    }
+  },
+  "suitWorstRain": "악천후",
+  "suitWorstWind": "강풍",
+  "suitWorstCold": "한파",
+  "suitWorstHeat": "폭염",
+  "suitPrepRain": "우비",
+  "suitPrepWind": "방풍",
+  "suitPrepCold": "방한",
+  "suitPrepHeat": "더위 대비",
+  "suitDetailRainProb": "강수확률 {p}%",
+  "@suitDetailRainProb": {
+    "placeholders": {
+      "p": {"type": "int"}
+    }
+  },
+  "suitDetailWind": "풍속 {w}m/s",
+  "@suitDetailWind": {
+    "placeholders": {
+      "w": {"type": "String"}
+    }
+  },
+  "suitDetailMinTemp": "최저 {t}°C",
+  "@suitDetailMinTemp": {
+    "placeholders": {
+      "t": {"type": "int"}
+    }
+  },
+  "suitDetailMaxTemp": "최고 {t}°C",
+  "@suitDetailMaxTemp": {
+    "placeholders": {
+      "t": {"type": "int"}
+    }
+  },
+  "suitDetailLightning": "낙뢰 예보",
+  "suitDetailProfileApplied": " — 내 라운드 성향 반영 판정",
+
+  "weatherPendingMessage": "날씨 정보가 아직 준비 중입니다.\n골프장 DB에는 등록되어 있지만 해당 위치의 예보 캐시가 아직 수집되지 않았거나, 좌표 보정이 필요할 수 있어요. 잠시 후 다시 확인하거나 일정의 골프장명을 수정해 주세요.",
+  "weatherUnavailableMessage": "날씨 정보를 불러오지 못했습니다.\n네트워크 연결 또는 서버 상태를 확인해 주세요. 실기기 테스트 중이라면 설정의 API 주소가 배포 서버를 가리키는지도 확인하면 좋습니다.\n현재 주소: {url}",
+  "@weatherUnavailableMessage": {
+    "placeholders": {
+      "url": {"type": "String"}
+    }
+  },
+  "splashTagline": "스마트한 라운드 관리",
+  "mapCourseLocation": "골프장 위치",
+  "themeSubtitleFairwaySky": "쿨 틸 · 다크",
+  "themeSubtitleLightAir": "오프화이트 · 라이트",
+  "themeSubtitleMidnightLime": "네이비 + 라임 · 다크",
+  "notifChannelName": "날씨 알림",
+  "notifChannelDesc": "골프·낚시 일정 기상 변화 알림",
+
+  "sensitivityLow": "둔감",
+  "sensitivityNormal": "보통",
+  "sensitivityHigh": "민감"
+}

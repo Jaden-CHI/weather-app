@@ -1,15 +1,21 @@
+import '../l10n/l10n.dart';
 import '../models/weather_data.dart';
 import 'settings_service.dart';
 
 /// 날씨 항목별 민감도 (라운드 성향)
 enum WeatherSensitivity {
-  low('low', '낮음'),
-  normal('normal', '보통'),
-  high('high', '높음');
+  low('low'),
+  normal('normal'),
+  high('high');
 
   final String id;
-  final String label;
-  const WeatherSensitivity(this.id, this.label);
+  const WeatherSensitivity(this.id);
+
+  String get label => switch (this) {
+        low => L10n.current.sensitivityLow,
+        normal => L10n.current.sensitivityNormal,
+        high => L10n.current.sensitivityHigh,
+      };
 
   static WeatherSensitivity byId(String? id) =>
       values.firstWhere((s) => s.id == id, orElse: () => normal);
@@ -140,34 +146,42 @@ class RoundSuitability {
             ? 'YELLOW'
             : 'GREEN';
 
-    // 판정이 백엔드와 같으면 AI가 만든 메시지를 그대로 사용
-    if (status == data.aiRecommendation.status) return data.aiRecommendation;
+    final t = L10n.current;
+
+    // 판정이 백엔드와 같으면 AI가 만든 메시지를 그대로 사용.
+    // 단, 백엔드 메시지는 한국어이므로 영어 화면에서는 항상 클라이언트가 생성한다.
+    if (status == data.aiRecommendation.status && t.localeName == 'ko') {
+      return data.aiRecommendation;
+    }
 
     final dday = data.dday;
     final windStr = maxWind.toStringAsFixed(maxWind == maxWind.roundToDouble() ? 0 : 1);
-    final parts = <String>['강수확률 $maxRain%', '풍속 ${windStr}m/s'];
-    if (levels['cold']! > 0) parts.add('최저 ${minTemp.round()}°C');
-    if (levels['heat']! > 0) parts.add('최고 ${maxTemp.round()}°C');
-    if (hasLightning) parts.add('낙뢰 예보');
-    final detail = '${parts.join(' / ')} — 내 라운드 성향 반영 판정';
+    final parts = <String>[
+      t.suitDetailRainProb(maxRain),
+      t.suitDetailWind(windStr),
+    ];
+    if (levels['cold']! > 0) parts.add(t.suitDetailMinTemp(minTemp.round()));
+    if (levels['heat']! > 0) parts.add(t.suitDetailMaxTemp(maxTemp.round()));
+    if (hasLightning) parts.add(t.suitDetailLightning);
+    final detail = '${parts.join(' / ')}${t.suitDetailProfileApplied}';
 
     switch (status) {
       case 'RED':
         return AiRecommendation(
           status: 'RED',
-          message: 'D-$dday 취소 권고 — ${_worstLabel(levels)} 주의보',
+          message: t.suitRed(dday, _worstLabel(levels)),
           detail: detail,
         );
       case 'YELLOW':
         return AiRecommendation(
           status: 'YELLOW',
-          message: 'D-$dday 주의 — ${_prepLabel(levels)} 준비',
+          message: t.suitYellow(dday, _prepLabel(levels)),
           detail: detail,
         );
       default:
         return AiRecommendation(
           status: 'GREEN',
-          message: 'D-$dday 라운딩 적합',
+          message: t.suitGreen(dday),
           detail: detail,
         );
     }
@@ -175,22 +189,24 @@ class RoundSuitability {
 
   static String _worstLabel(Map<String, int> levels) {
     final worst = levels.entries.reduce((a, b) => a.value >= b.value ? a : b);
-    return const {
-      'rain': '악천후',
-      'wind': '강풍',
-      'cold': '한파',
-      'heat': '폭염',
-    }[worst.key]!;
+    final t = L10n.current;
+    return switch (worst.key) {
+      'wind' => t.suitWorstWind,
+      'cold' => t.suitWorstCold,
+      'heat' => t.suitWorstHeat,
+      _ => t.suitWorstRain,
+    };
   }
 
   static String _prepLabel(Map<String, int> levels) {
     final worst = levels.entries.reduce((a, b) => a.value >= b.value ? a : b);
-    return const {
-      'rain': '우비',
-      'wind': '방풍',
-      'cold': '방한',
-      'heat': '더위 대비',
-    }[worst.key]!;
+    final t = L10n.current;
+    return switch (worst.key) {
+      'wind' => t.suitPrepWind,
+      'cold' => t.suitPrepCold,
+      'heat' => t.suitPrepHeat,
+      _ => t.suitPrepRain,
+    };
   }
 
   /// 백엔드 _filter_by_round_window와 동일: 티오프 1시간 전 ~ 5시간 후

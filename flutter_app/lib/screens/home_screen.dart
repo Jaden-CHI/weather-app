@@ -190,8 +190,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     if (lastSeen == version) return;
     // 팝업 실패/중복 방지를 위해 표시 전에 먼저 기록
     await settings.setLastWhatsNewVersion(version);
-    final items = WhatsNew.itemsFor(version);
-    if (items == null || items.isEmpty || !mounted) return;
+    if (!mounted) return;
+    final items = WhatsNew.itemsFor(
+      version,
+      lang: Localizations.localeOf(context).languageCode,
+    );
+    if (items == null || items.isEmpty) return;
     await showDialog<void>(
       context: context,
       builder: (context) => WhatsNewDialog(version: version, items: items),

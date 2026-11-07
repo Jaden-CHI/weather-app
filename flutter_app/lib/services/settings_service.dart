@@ -14,6 +14,7 @@ class SettingsService {
   static const _keyThemeId = 'setting_theme_id';
   static const _keySensitivityPrefix = 'setting_sensitivity_';
   static const _keyLastWhatsNewVersion = 'setting_last_whats_new_version';
+  static const _keyAppLanguage = 'setting_app_language';
 
   Future<int> getRainThreshold() async {
     final prefs = await SharedPreferences.getInstance();
@@ -117,6 +118,17 @@ class SettingsService {
   Future<void> setLastWhatsNewVersion(String version) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_keyLastWhatsNewVersion, version);
+  }
+
+  /// 앱 언어: 'system' / 'ko' / 'en'
+  Future<String> getAppLanguage() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_keyAppLanguage) ?? 'system';
+  }
+
+  Future<void> setAppLanguage(String value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyAppLanguage, value);
   }
 
   Future<bool> hasSeenHomeTutorial() async {
