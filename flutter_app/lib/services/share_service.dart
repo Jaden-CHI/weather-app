@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
+import '../l10n/l10n.dart';
 import '../models/weather_data.dart';
 import '../models/golf_event.dart' hide FishingEvent;
 
@@ -13,6 +15,7 @@ class ShareService {
     required GolfEvent event,
     required GolfWeatherData data,
   }) async {
+    final l10n = context.l10n;
     final rec = data.aiRecommendation;
     final policy = data.cancellationPolicy;
 
@@ -24,12 +27,12 @@ class ShareService {
     };
 
     final lines = <String>[
-      '⛳ Golf Windy — 라운드 날씨 공유',
+      l10n.shareGolfWeatherHeader,
       '',
       '$statusEmoji ${data.courseName} (${event.ddayLabel})',
       '📅 ${_formatDate(event.startDate)}',
       '',
-      '[ AI 권고 ]',
+      l10n.shareAiSection,
       rec.message,
       rec.detail,
     ];
@@ -37,10 +40,16 @@ class ShareService {
     // 예보 요약 (첫 4슬롯)
     if (data.forecast.isNotEmpty) {
       lines.add('');
-      lines.add('[ 시간대별 예보 ]');
+      lines.add(l10n.shareForecastSection);
       for (final f in data.forecast.take(4)) {
         lines.add(
-          '${f.timeLabel}  ${f.skyEmoji}  ${f.temp.toInt()}°  강수 ${f.rainProb}%  바람 ${f.windSpeed.toStringAsFixed(1)}m/s',
+          l10n.shareForecastLine(
+            f.timeLabel,
+            f.skyEmoji,
+            f.temp.toInt(),
+            f.rainProb,
+            f.windSpeed.toStringAsFixed(1),
+          ),
         );
       }
     }
@@ -48,22 +57,22 @@ class ShareService {
     // 취소 정책 요약
     if (policy.message.isNotEmpty) {
       lines.add('');
-      lines.add('[ 취소 안내 ]');
+      lines.add(l10n.shareCancelSection);
       lines.add(policy.message);
       if (policy.rainCancel.available) {
-        lines.add('🌧️ 우천 특별 정책: ${policy.rainCancel.condition}');
+        lines.add(l10n.shareRainCancelPolicy(policy.rainCancel.condition));
       }
     }
 
     lines.add('');
     lines.add('─────────────────');
-    lines.add('Golf Windy에서 라운드 일정과 날씨를 확인하세요.');
+    lines.add(l10n.shareFooter);
 
     final text = lines.join('\n');
     final box = context.findRenderObject() as RenderBox?;
     await Share.share(
       text,
-      subject: '${data.courseName} 날씨 — ${rec.message}',
+      subject: l10n.shareWeatherSubject(data.courseName, rec.message),
       sharePositionOrigin:
           box != null ? box.localToGlobal(Offset.zero) & box.size : null,
     );
@@ -79,33 +88,33 @@ class ShareService {
       return shareGolfWeather(context: context, event: event, data: data);
     }
 
+    final l10n = context.l10n;
     final courseName = event.courseName ?? event.location ?? event.title;
     final lines = <String>[
-      '⛳ Golf Windy — 라운드 일정 공유',
+      l10n.shareScheduleHeader,
       '',
       '$courseName (${event.ddayLabel})',
       '📅 ${_formatDate(event.startDate)}',
       if ((event.address ?? '').trim().isNotEmpty)
         '📍 ${event.address!.trim()}',
       '',
-      '날씨 정보는 아직 준비 중입니다. Golf Windy에서 라운드 전 날씨와 취소 권고를 다시 확인해 주세요.',
+      l10n.shareWeatherPending,
       '',
       '─────────────────',
-      'Golf Windy에서 라운드 일정과 날씨를 확인하세요.',
+      l10n.shareFooter,
     ];
 
     final box = context.findRenderObject() as RenderBox?;
     await Share.share(
       lines.join('\n'),
-      subject: '$courseName 라운드 일정',
+      subject: l10n.shareScheduleSubject(courseName),
       sharePositionOrigin:
           box != null ? box.localToGlobal(Offset.zero) & box.size : null,
     );
   }
 
   String _formatDate(DateTime dt) {
-    final weekdays = ['월', '화', '수', '목', '금', '토', '일'];
-    final wd = weekdays[dt.weekday - 1];
-    return '${dt.month}월 ${dt.day}일($wd) ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+    final l10n = L10n.current;
+    return DateFormat(l10n.shareDateFmt, l10n.localeName).format(dt);
   }
 }

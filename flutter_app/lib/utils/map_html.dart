@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import '../l10n/l10n.dart';
+
 /// WebView용 지도 HTML.
 ///
 /// Windy API 키가 있으면 Windy Map Forecast API를 사용하고, 없으면
@@ -7,7 +9,7 @@ import 'dart:convert';
 String buildMapHtml({
   required double lat,
   required double lng,
-  String label = '골프장 위치',
+  String? label,
   int zoom = 13,
   String windyApiKey = '',
 }) {
@@ -81,8 +83,10 @@ String _sharedMapStyles(String rootId) => '''
     }
 ''';
 
-String _markerOverlayScript(String label) {
-  final safeLabel = jsonEncode(label.trim().isEmpty ? '골프장 위치' : label.trim());
+String _markerOverlayScript(String? label) {
+  final trimmed = label?.trim() ?? '';
+  final safeLabel =
+      jsonEncode(trimmed.isEmpty ? L10n.current.mapCourseLocation : trimmed);
   return '''
     const label = $safeLabel;
     document.querySelector('.course-target .course-label').textContent = label;
@@ -99,7 +103,7 @@ String _courseTargetHtml() => '''
 String _buildWindyMapHtml({
   required double lat,
   required double lng,
-  required String label,
+  required String? label,
   required int zoom,
   required String windyApiKey,
 }) {
@@ -146,7 +150,7 @@ ${_markerOverlayScript(label)}
 String _buildLeafletMapHtml({
   required double lat,
   required double lng,
-  required String label,
+  required String? label,
   required int zoom,
 }) {
   return '''

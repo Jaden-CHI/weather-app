@@ -1,8 +1,11 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/foundation.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:workmanager/workmanager.dart';
-import 'app_schedule_service.dart';
-import 'weather_api_service.dart';
-import 'widget_updater.dart';
+import '../l10n/l10n.dart';
+import 'settings_service.dart';
+import 'widget_sync_service.dart';
 
 const _taskName = 'weatherWidgetRefresh';
 const _taskTag = 'com.weatherapp.widget.refresh';
@@ -13,46 +16,20 @@ void backgroundDispatcher() {
   Workmanager().executeTask((taskName, inputData) async {
     if (taskName != _taskName) return Future.value(true);
 
+    // 백그라운드 isolate에서도 위젯 문구가 앱 언어 설정을 따르도록 초기화
     try {
-      await WidgetUpdater.init();
-      final scheduleService = AppScheduleService();
-      final apiService = WeatherApiService.instance;
+      await initializeDateFormatting();
+      final saved = await SettingsService.instance.getAppLanguage();
+      L10n.setLocale(
+        L10n.resolve(saved, ui.PlatformDispatcher.instance.locales),
+      );
+    } catch (_) {}
 
-      // 1. 가장 임박한 골프 일정 확인
-      final golfEvent = await scheduleService.getNextGolfSchedule();
-      if (golfEvent != null) {
-        // course_id 매핑
-        String? courseId = golfEvent.courseId;
-        if (courseId == null) {
-          final hint = golfEvent.courseName ?? golfEvent.title;
-          courseId = await apiService.searchCourseId(hint);
-        }
-        if (courseId != null) {
-          final weather = await apiService.getGolfWeather(
-            courseId,
-            dday: golfEvent.dday.clamp(0, 7),
-            startHour: golfEvent.startDate.hour,
-          );
-          if (weather != null) {
-            await WidgetUpdater.updateGolfWidget(
-              event: golfEvent.copyWith(courseId: courseId),
-              weather: weather,
-            );
-            return Future.value(true);
-          }
-        }
-      }
-
-      // 2. 골프 일정 없으면 위젯 빈 상태
-      await WidgetUpdater.showNoEventWidget();
-      return Future.value(true);
-    } catch (e) {
-      return Future.value(false); // false = Workmanager 재시도
-    }
+    return WidgetSyncService.instance.syncNextGolfEvent();
   });
 }
 
-  /// 백그라운드 서비스 초기화 + 주기 등록
+/// 백그라운드 서비스 초기화 + 주기 등록
 class BackgroundService {
   static Future<void> init() async {
     try {

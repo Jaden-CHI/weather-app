@@ -2,7 +2,7 @@
 
 import json
 import os
-from datetime import datetime, timedelta
+from datetime import datetime
 
 import httpx
 import redis.asyncio as aioredis
@@ -16,7 +16,10 @@ from models.database import (
     search_courses,
 )
 from services.ai_advisor import get_golf_recommendation
-from services.penalty_advisor import get_penalty_advice, get_sample_policy
+from services.penalty_advisor import get_penalty_advice
+from services.forecast_safety import (
+    KST, filter_forecasts, is_sample_source, round_start, target_date,
+)
 from services.golfzon_adapter import get_golfzon_adapter
 
 router = APIRouter(prefix="/api/v1/golf", tags=["golf"])
@@ -31,9 +34,7 @@ def _get_redis() -> aioredis.Redis:
 
 def _filter_by_dday(forecasts: list[dict], dday: int) -> list[dict]:
     """D+dday 날짜 예보만 필터링"""
-    target_date = (datetime.now() + timedelta(days=dday)).strftime("%Y%m%d")
-    filtered = [f for f in forecasts if f.get("date") == target_date]
-    return sorted(filtered, key=lambda f: f.get("time", "")) or forecasts[:24]
+    return filter_forecasts(forecasts, dday)
 
 
 def _filter_by_round_window(
@@ -61,7 +62,7 @@ def _filter_by_round_window(
         if window_start <= hour <= window_end:
             filtered.append(forecast)
 
-    return sorted(filtered, key=lambda f: f.get("time", "")) or forecasts
+    return sorted(filtered, key=lambda f: f.get("time", ""))
 
 
 def _open_meteo_hourly_to_forecast(hourly_items: list[dict]) -> list[dict]:
@@ -99,16 +100,16 @@ def _filter_open_meteo_hourly_by_dday(
 def _filter_raw_open_meteo_hourly_by_dday(
     hourly_items: list[dict], dday: int
 ) -> list[dict]:
-    target_date = (datetime.now() + timedelta(days=dday)).date()
+    requested_date = target_date(dday)
     filtered: list[dict] = []
     for item in hourly_items:
         try:
             dt = datetime.fromisoformat(str(item.get("datetime", "")))
         except ValueError:
             continue
-        if dt.date() == target_date:
+        if dt.date() == requested_date:
             filtered.append(item)
-    return filtered or hourly_items[:24]
+    return filtered
 
 
 def _sky_from_weather_code(code: int) -> int:
@@ -149,27 +150,6 @@ def _open_meteo_to_forecast(hourly: dict) -> list[dict]:
                 "sky": _sky_from_weather_code(code),
                 "lightning": 1 if code in {95, 96, 99} else 0,
                 "weather_code": code,
-            }
-        )
-    return forecasts
-
-
-def _mock_custom_forecast(dday: int) -> list[dict]:
-    target = datetime.now() + timedelta(days=dday)
-    forecasts = []
-    for hour in range(6, 22, 3):
-        dt = target.replace(hour=hour, minute=0, second=0, microsecond=0)
-        rain_prob = 20 if hour < 15 else 30
-        forecasts.append(
-            {
-                "date": dt.strftime("%Y%m%d"),
-                "time": dt.strftime("%H%M"),
-                "temp": 18 + (hour - 6) * 0.6,
-                "wind_speed": 3.5 + (hour % 4),
-                "rain_prob": rain_prob,
-                "rain_type": 0,
-                "sky": 3,
-                "lightning": 0,
             }
         )
     return forecasts
@@ -219,6 +199,7 @@ async def get_custom_course_weather(
         le=23,
         description="라운드 시작 시각 (0~23). 추천 판단 기준 시간",
     ),
+    start_minute: int | None = Query(None, ge=0, le=59),
 ):
     """DB에 없는 골프장도 좌표만 있으면 날씨 예보를 반환한다."""
     try:
@@ -230,10 +211,10 @@ async def get_custom_course_weather(
         open_meteo_hourly = _filter_raw_open_meteo_hourly_by_dday(
             open_meteo_hourly, dday
         )
-    except Exception:
-        forecasts = _mock_custom_forecast(dday)
-        open_meteo_hourly = []
-        source = "MOCK_CUSTOM"
+    except Exception as exc:
+        raise HTTPException(503, "날씨를 불러오지 못했습니다. 잠시 후 다시 확인해 주세요.") from exc
+    if not forecasts:
+        raise HTTPException(503, "해당 날짜의 예보가 아직 없습니다.")
 
     use_mock = os.getenv("USE_MOCK_DATA", "true").lower() == "true"
     recommendation_forecasts = _filter_by_round_window(forecasts, start_hour)
@@ -244,9 +225,7 @@ async def get_custom_course_weather(
         use_mock,
     )
 
-    policy = get_sample_policy("DEFAULT")
-    round_datetime = datetime.now() + timedelta(days=dday)
-    penalty_advice = get_penalty_advice(policy, round_datetime)
+    penalty_advice = get_penalty_advice({}, None)
     penalty_advice["policy_source"] = "CUSTOM"
 
     return {
@@ -256,10 +235,8 @@ async def get_custom_course_weather(
         "golfzon_linked": False,
         "golfzon_booking_url": None,
         "dday": dday,
-        "forecast_date": (datetime.now() + timedelta(days=dday)).strftime(
-            "%Y-%m-%d"
-        ),
-        "last_updated": datetime.now().isoformat(),
+        "forecast_date": target_date(dday).isoformat(),
+        "last_updated": datetime.now(KST).isoformat(),
         "source": source,
         "forecast": forecasts,
         "open_meteo_hourly": open_meteo_hourly[:24],
@@ -323,7 +300,7 @@ async def get_course_weather_status(
     source = payload.get("source")
     effective_source = source
     if (
-        source == "MOCK"
+        is_sample_source(source)
         and course.get("lat") is not None
         and course.get("lon") is not None
     ):
@@ -353,6 +330,7 @@ async def get_course_weather(
         le=23,
         description="라운드 시작 시각 (0~23). 추천 판단 기준 시간",
     ),
+    start_minute: int | None = Query(None, ge=0, le=59),
     db: AsyncSession = Depends(get_db),
 ):
     course = await get_course(db, course_id)
@@ -376,7 +354,7 @@ async def get_course_weather(
     data = json.loads(cached)
     source = data.get("source")
     if (
-        source == "MOCK"
+        is_sample_source(source)
         and course.get("lat") is not None
         and course.get("lon") is not None
     ):
@@ -389,17 +367,18 @@ async def get_course_weather(
             source = live_source
             kma_forecasts = []
             hourly_forecasts = _filter_by_dday(all_forecasts, dday)
-        except Exception:
-            kma_forecasts = _filter_by_dday(data.get("kma_forecast", []), dday)
-            hourly_forecasts = _filter_open_meteo_hourly_by_dday(
-                data.get("open_meteo_hourly", []), dday
-            )
+        except Exception as exc:
+            raise HTTPException(503, "실제 예보를 불러오지 못했습니다.") from exc
     else:
         kma_forecasts = _filter_by_dday(data.get("kma_forecast", []), dday)
         hourly_forecasts = _filter_open_meteo_hourly_by_dday(
             data.get("open_meteo_hourly", []), dday
         )
+    if is_sample_source(source):
+        raise HTTPException(503, "실제 예보를 수집 중입니다.")
     forecasts = hourly_forecasts or kma_forecasts
+    if not forecasts:
+        raise HTTPException(503, "해당 날짜의 예보가 아직 없습니다.")
 
     use_mock = os.getenv("USE_MOCK_DATA", "true").lower() == "true"
     recommendation_forecasts = _filter_by_round_window(forecasts, start_hour)
@@ -424,11 +403,16 @@ async def get_course_weather(
         }
         policy_source = gz_policy.source
     else:
-        policy = await get_cancellation_policy(db, course_id) or get_sample_policy(course_id)
-        policy_source = "DB" if await get_cancellation_policy(db, course_id) else "FALLBACK"
+        policy = await get_cancellation_policy(db, course_id) or {}
+        policy_source = "DB" if policy else "FALLBACK"
 
-    round_datetime = datetime.now() + timedelta(days=dday)
-    penalty_advice = get_penalty_advice(policy, round_datetime)
+    round_datetime = round_start(dday, start_hour, start_minute)
+    # Seed/sample policies are not verified course-specific booking terms.
+    verified = policy_source == "GOLFZON_API" or (
+        policy_source == "DB" and bool(policy.get("source_url"))
+        and bool(policy.get("verified_at"))
+    )
+    penalty_advice = get_penalty_advice(policy, round_datetime, verified=verified)
     penalty_advice["policy_source"] = policy_source
 
     # 날씨 취소 권고 시 스크린골프 추천
@@ -445,9 +429,7 @@ async def get_course_weather(
         "golfzon_linked": golfzon_linked,
         "golfzon_booking_url": course.get("golfzon_url"),
         "dday": dday,
-        "forecast_date": (datetime.now() + timedelta(days=dday)).strftime(
-            "%Y-%m-%d"
-        ),
+        "forecast_date": target_date(dday).isoformat(),
         "last_updated": data.get("updated_at"),
         "source": source,
         "forecast": forecasts,

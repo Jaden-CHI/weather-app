@@ -2,7 +2,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../config/app_theme.dart';
+import '../config/locale_provider.dart';
+import '../l10n/l10n.dart';
 import '../services/notification_service.dart';
+import '../services/round_suitability.dart';
 import '../services/settings_service.dart';
 import '../services/app_schedule_service.dart';
 import 'release_qa_screen.dart';
@@ -28,6 +31,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   int _notifyHoursBefore = 24;
   bool _loading = true;
   String? _userToken;
+  final _sensitivities = <String, WeatherSensitivity>{
+    'rain': WeatherSensitivity.normal,
+    'wind': WeatherSensitivity.normal,
+    'cold': WeatherSensitivity.normal,
+    'heat': WeatherSensitivity.normal,
+  };
 
   @override
   void initState() {
@@ -40,6 +49,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final wind = await _settings.getWindThreshold();
     final hours = await _settings.getNotifyHoursBefore();
     final token = await NotificationService.instance.userToken;
+    for (final dim in _sensitivities.keys.toList()) {
+      _sensitivities[dim] =
+          WeatherSensitivity.byId(await _settings.getWeatherSensitivity(dim));
+    }
     if (mounted) {
       setState(() {
         _rainThreshold = rain;
@@ -51,10 +64,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     }
   }
 
+  Future<void> _setSensitivity(String dim, WeatherSensitivity s) async {
+    setState(() => _sensitivities[dim] = s);
+    await _settings.setWeatherSensitivity(dim, s.id);
+  }
+
   @override
   Widget build(BuildContext context) {
     final t = GwTheme.of(context);
+    final l10n = context.l10n;
     final current = ref.watch(gwThemeProvider);
+    final language = ref.watch(appLanguageProvider);
 
     return _loading
         ? Center(child: CircularProgressIndicator(color: t.accent))
@@ -63,14 +83,38 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             children: [
               Padding(
                 padding: const EdgeInsets.fromLTRB(0, 14, 0, 22),
-                child: Text('설정',
+                child: Text(l10n.setTitle,
                     style: TextStyle(
                         color: t.fg,
                         fontSize: 28,
                         fontWeight: FontWeight.w700,
                         letterSpacing: -0.4)),
               ),
-              const _SectionHeader('테마 · THEME'),
+              _SectionHeader(l10n.setLanguageSection),
+              _SettingsCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    for (final option in const [
+                      ('system', null),
+                      ('ko', '한국어'),
+                      ('en', 'English'),
+                    ]) ...[
+                      _LanguageOption(
+                        label: option.$2 ?? l10n.setLanguageSystem,
+                        selected: language == option.$1,
+                        onTap: () => ref
+                            .read(appLanguageProvider.notifier)
+                            .set(option.$1),
+                      ),
+                      if (option.$1 != 'en')
+                        Divider(color: t.line, height: 4),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+              _SectionHeader(l10n.setSectionTheme),
               ...GwTheme.all.map(
                 (theme) => Padding(
                   padding: const EdgeInsets.only(bottom: 11),
@@ -83,13 +127,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
               ),
               const SizedBox(height: 13),
-              const _SectionHeader('알림 임계값'),
+              _SectionHeader(l10n.setSectionThresholds),
               _SettingsCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _SliderRow(
-                      label: '강수 확률 기준',
+                      label: l10n.setRainThresholdLabel,
                       value: _rainThreshold.toDouble(),
                       min: 10,
                       max: 90,
@@ -102,7 +146,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     ),
                     Divider(color: t.line, height: 24),
                     _SliderRow(
-                      label: '풍속 기준',
+                      label: l10n.setWindThresholdLabel,
                       value: _windThreshold,
                       min: 3,
                       max: 20,
@@ -115,20 +159,61 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '이 임계값 초과 시 YELLOW/RED 권고가 발령됩니다',
+                      l10n.setThresholdHint,
                       style: TextStyle(color: t.fg3, fontSize: 12),
                     ),
                   ],
                 ),
               ),
               const SizedBox(height: 24),
-              const _SectionHeader('알림 타이밍'),
+              _SectionHeader(l10n.setSectionRoundProfile),
+              _SettingsCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _SensitivityRow(
+                      icon: Icons.water_drop_outlined,
+                      label: l10n.setSensitivityRain,
+                      value: _sensitivities['rain']!,
+                      onChanged: (s) => _setSensitivity('rain', s),
+                    ),
+                    Divider(color: t.line, height: 22),
+                    _SensitivityRow(
+                      icon: Icons.air_rounded,
+                      label: l10n.setSensitivityWind,
+                      value: _sensitivities['wind']!,
+                      onChanged: (s) => _setSensitivity('wind', s),
+                    ),
+                    Divider(color: t.line, height: 22),
+                    _SensitivityRow(
+                      icon: Icons.ac_unit_rounded,
+                      label: l10n.setSensitivityCold,
+                      value: _sensitivities['cold']!,
+                      onChanged: (s) => _setSensitivity('cold', s),
+                    ),
+                    Divider(color: t.line, height: 22),
+                    _SensitivityRow(
+                      icon: Icons.wb_sunny_outlined,
+                      label: l10n.setSensitivityHeat,
+                      value: _sensitivities['heat']!,
+                      onChanged: (s) => _setSensitivity('heat', s),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      l10n.setSensitivityHint,
+                      style: TextStyle(color: t.fg3, fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+              _SectionHeader(l10n.setSectionNotifyTiming),
               _SettingsCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '일정 몇 시간 전부터 알림을 받을까요?',
+                      l10n.setNotifyTimingQuestion,
                       style: TextStyle(color: t.fg2, fontSize: 14),
                     ),
                     const SizedBox(height: 12),
@@ -137,7 +222,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       children: [6, 12, 24, 48].map((h) {
                         final selected = _notifyHoursBefore == h;
                         return ChoiceChip(
-                          label: Text('$h시간 전'),
+                          label: Text(l10n.setHoursBefore(h)),
                           selected: selected,
                           showCheckmark: false,
                           selectedColor: t.accent,
@@ -161,13 +246,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
               ),
               const SizedBox(height: 24),
-              const _SectionHeader('알림 권한'),
+              _SectionHeader(l10n.setSectionNotifyPermission),
               _SettingsCard(
                 child: SizedBox(
                   width: double.infinity,
                   child: _OutlineActionButton(
                     icon: Icons.notifications_outlined,
-                    label: '알림 권한 요청 / 재등록',
+                    label: l10n.setNotifyPermissionButton,
                     onPressed: () async {
                       final granted = await NotificationService.instance
                           .requestPermissionAndRegister();
@@ -175,7 +260,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text(
-                            granted ? '알림 권한이 허용되었습니다.' : '알림 권한이 거부되었습니다.',
+                            granted
+                                ? context.l10n.setNotifyGranted
+                                : context.l10n.setNotifyDenied,
                           ),
                         ),
                       );
@@ -224,13 +311,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
               ],
               const SizedBox(height: 24),
-              const _SectionHeader('도움말'),
+              _SectionHeader(l10n.setSectionHelp),
               _SettingsCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '핵심 기능 안내를 다시 열 수 있습니다.',
+                      l10n.setHelpDesc,
                       style: TextStyle(color: t.fg2, fontSize: 14),
                     ),
                     const SizedBox(height: 12),
@@ -238,7 +325,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       width: double.infinity,
                       child: _OutlineActionButton(
                         icon: Icons.play_circle_outline,
-                        label: '튜토리얼 다시 보기',
+                        label: l10n.setHelpTutorialButton,
                         onPressed: widget.onOpenTutorial,
                       ),
                     ),
@@ -277,13 +364,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
               ],
               const SizedBox(height: 24),
-              const _SectionHeader('스코어'),
+              _SectionHeader(l10n.setSectionScore),
               _SettingsCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'OCR 스캔과 지난 라운드 기록 관리를 여기서 바로 열 수 있습니다.',
+                      l10n.setScoreDesc,
                       style: TextStyle(color: t.fg2, fontSize: 14),
                     ),
                     const SizedBox(height: 12),
@@ -291,7 +378,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       width: double.infinity,
                       child: _OutlineActionButton(
                         icon: Icons.scoreboard_outlined,
-                        label: '스코어 관리 열기',
+                        label: l10n.setScoreOpenButton,
                         onPressed: () {
                           Navigator.push(
                             context,
@@ -306,18 +393,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
               ),
               const SizedBox(height: 24),
-              const _SectionHeader('디바이스 정보'),
+              _SectionHeader(l10n.setSectionDevice),
               _SettingsCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '익명 디바이스 토큰',
+                      l10n.setDeviceTokenLabel,
                       style: TextStyle(color: t.fg3, fontSize: 12),
                     ),
                     const SizedBox(height: 4),
                     SelectableText(
-                      _userToken ?? '로딩 중...',
+                      _userToken ?? l10n.setDeviceTokenLoading,
                       style: TextStyle(
                         color: t.fg2,
                         fontSize: 11,
@@ -326,7 +413,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      '이 앱은 개인정보를 수집하지 않습니다. 위 토큰은 알림 발송에만 사용되는 임의 식별자입니다.',
+                      l10n.setDevicePrivacyNote,
                       style: TextStyle(color: t.fg3, fontSize: 11),
                     ),
                   ],
@@ -348,6 +435,12 @@ class _ThemeCard extends StatelessWidget {
     required this.selected,
     required this.onTap,
   });
+
+  String _localizedSubtitle(BuildContext context) => switch (theme.id) {
+        'light_air' => context.l10n.themeSubtitleLightAir,
+        'midnight_lime' => context.l10n.themeSubtitleMidnightLime,
+        _ => context.l10n.themeSubtitleFairwaySky,
+      };
 
   @override
   Widget build(BuildContext context) {
@@ -398,7 +491,7 @@ class _ThemeCard extends StatelessWidget {
                           fontSize: 15,
                           fontWeight: FontWeight.w600)),
                   const SizedBox(height: 2),
-                  Text(theme.subtitle,
+                  Text(_localizedSubtitle(context),
                       style: TextStyle(color: t.fg3, fontSize: 12)),
                 ],
               ),
@@ -407,6 +500,115 @@ class _ThemeCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+// ── 언어 선택 행 ────────────────────────────────────────────────
+class _LanguageOption extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _LanguageOption({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final t = GwTheme.of(context);
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                label,
+                style: TextStyle(
+                  color: selected ? t.fg : t.fg2,
+                  fontSize: 14,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                ),
+              ),
+            ),
+            if (selected)
+              Icon(Icons.check_rounded, color: t.accent, size: 20),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── 라운드 성향 민감도 선택 행 ─────────────────────────────────
+class _SensitivityRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final WeatherSensitivity value;
+  final ValueChanged<WeatherSensitivity> onChanged;
+
+  const _SensitivityRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final t = GwTheme.of(context);
+    return Row(
+      children: [
+        Icon(icon, size: 18, color: t.fg2),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            label,
+            style: TextStyle(
+                color: t.fg, fontSize: 14, fontWeight: FontWeight.w600),
+          ),
+        ),
+        Container(
+          padding: const EdgeInsets.all(3),
+          decoration: BoxDecoration(
+            color: t.surface2,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: t.cardBorder),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: WeatherSensitivity.values.map((s) {
+              final selected = s == value;
+              return GestureDetector(
+                onTap: () => onChanged(s),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 150),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: selected ? t.accent : Colors.transparent,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    s.label,
+                    style: TextStyle(
+                      color: selected ? t.accentInk : t.fg2,
+                      fontSize: 12,
+                      fontWeight:
+                          selected ? FontWeight.w700 : FontWeight.w500,
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+      ],
     );
   }
 }

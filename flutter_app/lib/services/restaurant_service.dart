@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../config/api_keys.dart';
+import '../l10n/l10n.dart';
 import '../models/restaurant.dart';
 import '../models/restaurant_search_result.dart';
 
@@ -125,7 +126,7 @@ class RestaurantService {
       debugPrint('❌ Restaurant search error: $e');
       return RestaurantSearchResult(
         restaurants: const [],
-        errorMessage: '식당 검색 중 오류가 발생했습니다.\n$e',
+        errorMessage: L10n.current.restSearchError('$e'),
       );
     }
   }
@@ -172,12 +173,12 @@ class RestaurantService {
 
   String _kakaoErrorMessage(int statusCode, String body) {
     if (statusCode == 401) {
-      return '카카오 API 인증에 실패했습니다. 개발자 콘솔에서 REST API 키를 확인해 주세요.';
+      return L10n.current.restApiAuthError;
     }
     if (statusCode == 403) {
-      return '카카오 API 사용이 제한되었습니다. 앱 플랫폼(iOS) 등록 여부를 확인해 주세요.';
+      return L10n.current.restApiForbiddenError;
     }
-    return '식당 API 오류 ($statusCode)';
+    return L10n.current.restApiError(statusCode);
   }
 
   List<String> _getCategoryQueries(String category) {
@@ -327,10 +328,10 @@ class RestaurantService {
       return RestaurantDetail.fromRestaurant(
         restaurant,
         phone: restaurant.phone,
-        hours: '정보 확인 필요',
-        reviews: const [
-          '카카오 장소 페이지에서 방문 후기와 사진을 확인해 보세요.',
-          '라운드 전후 식사에 맞는 음식점 카테고리만 선별했습니다.',
+        hours: L10n.current.restHoursPending,
+        reviews: [
+          L10n.current.restReviewHint1,
+          L10n.current.restReviewHint2,
         ],
       );
     } catch (e) {

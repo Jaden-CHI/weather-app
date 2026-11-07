@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_description">골프 날씨 위젯</string>
+    <string name="widget_empty_message">앱을 열어 라운드를 등록해 주세요</string>
+    <string name="widget_tap_open">눌러서 Golf Windy 열기</string>
+</resources>

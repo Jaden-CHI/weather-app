@@ -8,6 +8,8 @@ import '../models/golf_event.dart';
 import 'scorecard_service.dart';
 
 class AppScheduleService {
+  /// Notifies the foreground widget after any saved change, including restore.
+  static final changes = ValueNotifier<int>(0);
   static const String _localSchedulesKey = 'golf_schedules_v2';
   static const Set<String> _generatedTestCourseNames = {
     '레이크사이드CC',
@@ -188,6 +190,8 @@ class AppScheduleService {
 
   Future<Map<String, Map<String, dynamic>>> _loadSchedules() async {
     final prefs = await SharedPreferences.getInstance();
+    // Workmanager runs in another isolate with its own preferences cache.
+    await prefs.reload();
     final raw = prefs.getString(_localSchedulesKey);
     if (raw == null || raw.isEmpty) return {};
 
@@ -210,6 +214,7 @@ class AppScheduleService {
   ) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_localSchedulesKey, jsonEncode(schedules));
+    changes.value++;
   }
 
   bool _isNewer(Map<String, dynamic> incoming, Map<String, dynamic> current) {

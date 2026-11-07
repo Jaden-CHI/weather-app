@@ -2,8 +2,18 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>kakaomap</string>
+		<string>nmap</string>
+	</array>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>en</string>
+		<string>ko</string>
+	</array>
 	<key>CFBundleDisplayName</key>
 	<string>Golf Windy</string>
 	<key>CFBundleExecutable</key>
@@ -29,25 +39,25 @@
 
 	<!-- ── 권한 사용 목적 설명 (App Store 필수) ── -->
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>현재 위치 근처의 골프장·출조지 날씨를 표시합니다.</string>
+	<string>Shows weather for golf courses near your current location.</string>
 
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>잠금화면 위젯에 실시간 날씨를 표시하기 위해 위치 정보를 사용합니다.</string>
+	<string>Uses your location to show live weather on the lock screen widget.</string>
 
 	<key>NSCameraUsageDescription</key>
-	<string>스코어카드를 촬영해 OCR로 점수와 동반자 정보를 불러오기 위해 카메라를 사용합니다.</string>
+	<string>Uses the camera to scan scorecards and import scores and player info via OCR.</string>
 
 	<key>NSCalendarsFullAccessUsageDescription</key>
-	<string>사용자가 선택한 골프 일정을 Golf Windy 일정으로 가져오기 위해 캘린더 접근 권한이 필요합니다.</string>
+	<string>Calendar access is needed to import the golf events you select into Golf Windy.</string>
 
 	<key>NSCalendarsUsageDescription</key>
-	<string>사용자가 선택한 골프 일정을 Golf Windy 일정으로 가져오기 위해 캘린더 접근 권한이 필요합니다.</string>
+	<string>Calendar access is needed to import the golf events you select into Golf Windy.</string>
 
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>사진에 저장된 스코어카드를 선택해 OCR로 점수와 동반자 정보를 불러오기 위해 사진 보관함에 접근합니다.</string>
+	<string>Accesses your photo library to pick saved scorecards and import scores and player info via OCR.</string>
 
 	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>스코어카드 이미지를 앱에서 활용할 수 있도록 사진 보관함 접근 권한이 필요합니다.</string>
+	<string>Photo library access is needed to use scorecard images in the app.</string>
 
 	<!-- ── 잠금화면 위젯 App Group ── -->
 	<key>NSAppTransportSecurity</key>

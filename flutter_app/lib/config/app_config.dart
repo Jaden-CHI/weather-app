@@ -3,6 +3,8 @@ import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../l10n/l10n.dart';
+
 /// API 서버 주소 및 플랫폼별 개발 기본값
 class AppConfig {
   AppConfig._();
@@ -79,10 +81,8 @@ class AppConfig {
     );
   }
 
-  static const weatherPendingMessage = '날씨 정보가 아직 준비 중입니다.\n'
-      '골프장 DB에는 등록되어 있지만 해당 위치의 예보 캐시가 아직 수집되지 않았거나, 좌표 보정이 필요할 수 있어요. 잠시 후 다시 확인하거나 일정의 골프장명을 수정해 주세요.';
+  static String get weatherPendingMessage => L10n.current.weatherPendingMessage;
 
-  static String get weatherUnavailableMessage => '날씨 정보를 불러오지 못했습니다.\n'
-      '네트워크 연결 또는 서버 상태를 확인해 주세요. 실기기 테스트 중이라면 설정의 API 주소가 배포 서버를 가리키는지도 확인하면 좋습니다.\n'
-      '현재 주소: $apiBaseUrl';
+  static String get weatherUnavailableMessage =>
+      L10n.current.weatherUnavailableMessage(apiBaseUrl);
 }

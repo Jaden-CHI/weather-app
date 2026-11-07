@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../config/app_theme.dart';
+import '../l10n/l10n.dart';
 import '../models/golf_event.dart';
 import '../models/golf_score.dart';
 import '../services/scorecard_service.dart';
@@ -70,13 +71,13 @@ class _ScorecardScreenState extends State<ScorecardScreen> {
       await ScorecardService.instance.saveScore(score);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('스코어카드를 저장했습니다.')),
+        SnackBar(content: Text(context.l10n.scoreCardSavedSnack)),
       );
       Navigator.pop(context, true);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('저장하지 못했습니다: $e')),
+        SnackBar(content: Text(context.l10n.scoreSaveFailedSnack('$e'))),
       );
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -97,7 +98,7 @@ class _ScorecardScreenState extends State<ScorecardScreen> {
             return AlertDialog(
               backgroundColor: t.surface,
               title: Text(
-                '골프장 이름 확인',
+                context.l10n.scoreCourseNameConfirmTitle,
                 style: TextStyle(color: t.fg),
               ),
               content: Column(
@@ -105,7 +106,7 @@ class _ScorecardScreenState extends State<ScorecardScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '이번 카드에서는 골프장 이름을 읽지 못했어요. 저장 전에 골프장 이름만 입력해 주세요.',
+                    context.l10n.scoreCourseNameMissingDesc,
                     style: TextStyle(
                       color: t.fg3,
                       fontSize: 13,
@@ -117,9 +118,9 @@ class _ScorecardScreenState extends State<ScorecardScreen> {
                     controller: controller,
                     autofocus: true,
                     style: TextStyle(color: t.fg),
-                    decoration: const InputDecoration(
-                      labelText: '골프장 이름',
-                      hintText: '예: 드림파크CC',
+                    decoration: InputDecoration(
+                      labelText: context.l10n.scoreCourseNameLabel,
+                      hintText: context.l10n.scoreCourseNameHint,
                     ),
                     onChanged: (_) => setDialogState(() {}),
                   ),
@@ -128,7 +129,7 @@ class _ScorecardScreenState extends State<ScorecardScreen> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(dialogContext),
-                  child: const Text('취소'),
+                  child: Text(context.l10n.commonCancel),
                 ),
                 FilledButton(
                   onPressed: controller.text.trim().isEmpty
@@ -137,7 +138,7 @@ class _ScorecardScreenState extends State<ScorecardScreen> {
                             dialogContext,
                             controller.text.trim(),
                           ),
-                  child: const Text('저장 계속'),
+                  child: Text(context.l10n.scoreContinueSave),
                 ),
               ],
             );
@@ -199,8 +200,9 @@ class _ScorecardScreenState extends State<ScorecardScreen> {
       SnackBar(
         content: Text(
           companions.isEmpty
-              ? 'OCR 결과를 불러왔어요. 홀별 점수만 한 번 확인해 주세요.'
-              : 'OCR 결과와 동반자 ${companions.length}명 기록을 불러왔어요.',
+              ? context.l10n.scoreOcrLoadedSnack
+              : context.l10n
+                  .scoreOcrLoadedWithCompanionsSnack(companions.length),
         ),
       ),
     );
@@ -283,7 +285,9 @@ class _ScorecardScreenState extends State<ScorecardScreen> {
                     )
                   : const Icon(Icons.save_outlined),
               label: Text(
-                _saving ? '저장 중' : '스코어 저장',
+                _saving
+                    ? context.l10n.scoreSaving
+                    : context.l10n.scoreSaveButton,
                 style: const TextStyle(fontWeight: FontWeight.w800),
               ),
             ),
@@ -314,7 +318,7 @@ class _ScorecardScreenState extends State<ScorecardScreen> {
       return title;
     }
 
-    return '지난 라운드 OCR';
+    return context.l10n.scorePastRoundOcr;
   }
 }
 
@@ -350,7 +354,7 @@ class _ScoreNav extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '스코어카드',
+                  context.l10n.scoreCardLabel,
                   style: TextStyle(
                     color: t.fg3,
                     fontSize: 12,
@@ -415,7 +419,7 @@ class _CompanionSummary extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '동반자 OCR 결과',
+            context.l10n.scoreCompanionOcrResult,
             style: TextStyle(
               color: t.fg,
               fontSize: 15,
@@ -460,21 +464,21 @@ class _RoundSummary extends StatelessWidget {
             children: [
               Expanded(
                 child: _SummaryMetric(
-                  label: '총타',
+                  label: context.l10n.scoreTotalStrokes,
                   value: '${score.totalScore}',
                   accent: true,
                 ),
               ),
               Expanded(
                 child: _SummaryMetric(
-                  label: '스코어',
+                  label: context.l10n.scoreScoreLabel,
                   value: score.overParLabel,
                   accent: true,
                 ),
               ),
               Expanded(
                 child: _SummaryMetric(
-                  label: '퍼트',
+                  label: context.l10n.scorePutts,
                   value: '${score.totalPutts}',
                 ),
               ),
@@ -485,7 +489,7 @@ class _RoundSummary extends StatelessWidget {
             children: [
               Expanded(
                 child: _TinyMetric(
-                  label: '페어웨이',
+                  label: context.l10n.scoreFairway,
                   value: _percent(score.fairwayRate),
                 ),
               ),
@@ -497,7 +501,7 @@ class _RoundSummary extends StatelessWidget {
               ),
               Expanded(
                 child: _TinyMetric(
-                  label: 'OB/벌타',
+                  label: context.l10n.scoreObPenalty,
                   value: '${score.obCount}/${score.penaltyCount}',
                 ),
               ),
@@ -660,7 +664,7 @@ class _HoleScoreCard extends StatelessWidget {
             children: [
               Expanded(
                 child: _LabeledStepper(
-                  label: '타수',
+                  label: context.l10n.scoreStrokes,
                   value: hole.strokes,
                   min: 1,
                   max: 12,
@@ -672,7 +676,7 @@ class _HoleScoreCard extends StatelessWidget {
               const SizedBox(width: 10),
               Expanded(
                 child: _LabeledStepper(
-                  label: '퍼트',
+                  label: context.l10n.scorePutts,
                   value: hole.putts,
                   min: 0,
                   max: 6,
@@ -702,7 +706,7 @@ class _HoleScoreCard extends StatelessWidget {
               const SizedBox(width: 10),
               Expanded(
                 child: _LabeledStepper(
-                  label: '벌타',
+                  label: context.l10n.scorePenalty,
                   value: hole.penalty,
                   min: 0,
                   max: 6,
@@ -868,7 +872,7 @@ class _FairwaySelector extends StatelessWidget {
         SizedBox(
           width: 64,
           child: Text(
-            '페어웨이',
+            context.l10n.scoreFairway,
             style: TextStyle(
               color: t.fg3,
               fontSize: 12,
@@ -878,16 +882,16 @@ class _FairwaySelector extends StatelessWidget {
         ),
         Expanded(
           child: SegmentedButton<FairwayResult>(
-            segments: const [
+            segments: [
               ButtonSegment(
                 value: FairwayResult.hit,
-                label: Text('성공'),
+                label: Text(context.l10n.scoreFairwayHit),
               ),
               ButtonSegment(
                 value: FairwayResult.miss,
-                label: Text('실패'),
+                label: Text(context.l10n.scoreFairwayMiss),
               ),
-              ButtonSegment(
+              const ButtonSegment(
                 value: FairwayResult.notApplicable,
                 label: Text('-'),
               ),
