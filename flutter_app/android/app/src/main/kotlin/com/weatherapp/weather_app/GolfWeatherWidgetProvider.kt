@@ -31,7 +31,8 @@ class GolfWeatherWidgetProvider : AppWidgetProvider() {
         val status     = data.getString("status", "NONE") ?: "NONE"
         val ddayLabel  = data.getString("dday_label", "") ?: ""
         val courseName = data.getString("course_name", "Golf Windy") ?: "Golf Windy"
-        val message    = data.getString("status_message", "앱을 열어 라운드를 등록해 주세요") ?: "앱을 열어 라운드를 등록해 주세요"
+        val emptyMsg   = context.getString(R.string.widget_empty_message)
+        val message    = data.getString("status_message", emptyMsg) ?: emptyMsg
         val temp       = data.getString("temp", "") ?: ""
         val rainProb   = data.getString("rain_prob", "") ?: ""
         val windSpeed  = data.getString("wind_speed", "") ?: ""
@@ -74,7 +75,7 @@ class GolfWeatherWidgetProvider : AppWidgetProvider() {
         views.setTextViewText(R.id.tv_temp, temp)
         views.setTextViewText(R.id.tv_rain, if (rainProb.isEmpty()) "" else "🌧 $rainProb")
         views.setTextViewText(R.id.tv_wind, if (windSpeed.isEmpty()) "" else "💨 $windSpeed")
-        views.setTextViewText(R.id.tv_cancel, cancelMsg.ifEmpty { "눌러서 Golf Windy 열기" })
+        views.setTextViewText(R.id.tv_cancel, cancelMsg.ifEmpty { context.getString(R.string.widget_tap_open) })
 
         appWidgetManager.updateAppWidget(widgetId, views)
     }

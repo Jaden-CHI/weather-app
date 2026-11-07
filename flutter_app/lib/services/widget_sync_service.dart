@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import '../l10n/l10n.dart';
 import '../models/golf_event.dart';
 import '../models/weather_data.dart';
 import 'app_schedule_service.dart';
@@ -56,16 +57,16 @@ class WidgetSyncService {
       await _initialize();
       final event = await _loadNextEvent();
       if (event == null) {
-        await _publish(null, null, '앱을 열어 라운드를 등록해 주세요');
+        await _publish(null, null, L10n.current.widgetNoSchedule);
         return true;
       }
       if (event.dday < 0 || event.dday > 7) {
-        await _publish(event, null, '아직 예보 제공 전 · 라운드 7일 전부터 확인하세요');
+        await _publish(event, null, L10n.current.widgetForecastNotReady);
         return true;
       }
 
       // Show the schedule before networking; never leave another round's data.
-      await _publish(event, null, '날씨 확인 중 · 눌러서 앱 열기');
+      await _publish(event, null, L10n.current.widgetChecking);
       final weather = await _loadWeather(event);
       final latest = await _loadNextEvent();
       // A schedule may have changed while the request was in flight, including
@@ -75,7 +76,7 @@ class WidgetSyncService {
         return true;
       }
       if (weather == null || weather.forecast.isEmpty) {
-        await _publish(event, null, '날씨를 확인하지 못했습니다 · 앱에서 다시 확인');
+        await _publish(event, null, L10n.current.widgetWeatherFailed);
         return false;
       }
       await _publish(event, weather, '');
@@ -86,8 +87,8 @@ class WidgetSyncService {
         // Do not restore a deleted event even when an old request throws.
         final latest = await _loadNextEvent();
         await _publish(latest, null, latest == null
-            ? '앱을 열어 라운드를 등록해 주세요'
-            : '정보를 확인하지 못했습니다 · 앱에서 다시 확인');
+            ? L10n.current.widgetNoSchedule
+            : L10n.current.widgetInfoFailed);
       } catch (updateError) {
         debugPrint('Widget fallback failed: $updateError');
       }

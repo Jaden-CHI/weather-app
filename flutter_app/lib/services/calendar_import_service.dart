@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
+import '../l10n/l10n.dart';
 import 'weather_api_service.dart';
 
 class CalendarGolfImportCandidate {
@@ -123,7 +124,7 @@ class CalendarImportService {
 
         rawCandidates.add(
           CalendarGolfImportCandidate(
-            title: title.isEmpty ? '골프 일정' : title,
+            title: title.isEmpty ? L10n.current.calDefaultGolfTitle : title,
             startAt: startAt,
             location: location.isEmpty ? null : location,
             description: description.isEmpty ? null : description,

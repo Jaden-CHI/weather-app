@@ -1,0 +1,7 @@
+"NSLocationWhenInUseUsageDescription" = "Shows weather for golf courses near your current location.";
+"NSLocationAlwaysAndWhenInUseUsageDescription" = "Uses your location to show live weather on the lock screen widget.";
+"NSCameraUsageDescription" = "Uses the camera to scan scorecards and import scores and player info via OCR.";
+"NSCalendarsFullAccessUsageDescription" = "Calendar access is needed to import the golf events you select into Golf Windy.";
+"NSCalendarsUsageDescription" = "Calendar access is needed to import the golf events you select into Golf Windy.";
+"NSPhotoLibraryUsageDescription" = "Accesses your photo library to pick saved scorecards and import scores and player info via OCR.";
+"NSPhotoLibraryAddUsageDescription" = "Photo library access is needed to use scorecard images in the app.";

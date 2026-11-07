@@ -52,7 +52,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
-        android:text="앱을 열어 라운드를 등록해 주세요"
+        android:text="@string/widget_empty_message"
         android:textColor="#B0BEC5"
         android:textSize="12sp"/>
 
@@ -97,7 +97,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="6dp"
-        android:text="눌러서 Golf Windy 열기"
+        android:text="@string/widget_tap_open"
         android:textColor="#A5D6A7"
         android:textSize="11sp"/>
 

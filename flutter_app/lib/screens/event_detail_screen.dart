@@ -3,6 +3,7 @@ import '../config/app_theme.dart';
 import '../models/golf_event.dart';
 import '../models/weather_data.dart';
 import '../config/app_config.dart';
+import '../l10n/l10n.dart';
 import '../services/widget_sync_service.dart';
 import '../services/notification_service.dart';
 import '../services/share_service.dart';
@@ -23,20 +24,27 @@ class _St {
       required this.label});
 }
 
-_St _statusOf(GwTheme t, String s) => switch (s) {
+_St _statusOf(GwTheme t, AppLocalizations l10n, String s) => switch (s) {
       'GREEN' => _St(
           color: t.success,
           bg: t.successBg,
           border: t.successBorder,
-          label: '최적'),
+          label: l10n.eventStatusOptimal),
       'YELLOW' => _St(
-          color: t.warn, bg: t.warnBg, border: t.warnBorder, label: '주의'),
+          color: t.warn,
+          bg: t.warnBg,
+          border: t.warnBorder,
+          label: l10n.eventStatusCaution),
       'RED' => _St(
           color: t.danger,
           bg: t.dangerBg,
           border: t.dangerBorder,
-          label: '취소권장'),
-      _ => _St(color: t.fg3, bg: t.line, border: t.line, label: '정보없음'),
+          label: l10n.eventStatusCancelRecommended),
+      _ => _St(
+          color: t.fg3,
+          bg: t.line,
+          border: t.line,
+          label: l10n.eventStatusUnknown),
     };
 
 class EventDetailScreen extends StatefulWidget {
@@ -163,16 +171,18 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: t.surface,
-        title: Text('일정 삭제', style: TextStyle(color: t.fg)),
-        content: Text('이 일정을 삭제하시겠습니까?', style: TextStyle(color: t.fg2)),
+        title: Text(context.l10n.eventDeleteTitle, style: TextStyle(color: t.fg)),
+        content:
+            Text(context.l10n.eventDeleteConfirm, style: TextStyle(color: t.fg2)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: Text('취소', style: TextStyle(color: t.fg2)),
+            child: Text(context.l10n.commonCancel, style: TextStyle(color: t.fg2)),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: Text('삭제', style: TextStyle(color: t.danger)),
+            child:
+                Text(context.l10n.commonDelete, style: TextStyle(color: t.danger)),
           ),
         ],
       ),
@@ -186,8 +196,8 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context)
-              .showSnackBar(SnackBar(content: Text('오류: $e')));
+          ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(context.l10n.eventErrorWithDetail('$e'))));
         }
       }
     }
@@ -205,7 +215,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     if (!granted) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('알림 권한이 필요합니다. 설정에서 허용해주세요.')));
+            SnackBar(content: Text(context.l10n.eventNotifPermissionNeeded)));
       }
       setState(() => _subLoading = false);
       return;
@@ -219,7 +229,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     if (courseId.isEmpty) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('골프장 정보를 찾을 수 없어 구독할 수 없습니다.')));
+            SnackBar(content: Text(context.l10n.eventSubscribeNoCourse)));
       }
       setState(() => _subLoading = false);
       return;
@@ -237,7 +247,9 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
         _subLoading = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(id != null ? '날씨 변화 알림을 등록했습니다.' : '알림 등록에 실패했습니다.')));
+          content: Text(id != null
+              ? context.l10n.eventSubscribeSuccess
+              : context.l10n.eventSubscribeFailed)));
     }
   }
 
@@ -420,7 +432,7 @@ class _GolfDetailBody extends StatelessWidget {
     }
 
     final rec = data!.aiRecommendation;
-    final s = _statusOf(t, rec.status);
+    final s = _statusOf(t, context.l10n, rec.status);
     final policy = data!.cancellationPolicy;
 
     return ListView(
@@ -455,7 +467,7 @@ class _GolfDetailBody extends StatelessWidget {
         _ScorecardEntry(event: event, onTap: onScorecard),
         const SizedBox(height: 20),
         if (data!.forecast.isNotEmpty) ...[
-          Text('부킹 시간대 예보',
+          Text(context.l10n.eventBookingForecastTitle,
               style: TextStyle(
                   color: t.fg3,
                   fontSize: 12,
@@ -518,13 +530,13 @@ class _RestaurantEntry extends StatelessWidget {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('근처 식당 추천',
+                Text(context.l10n.eventRestaurantTitle,
                     style: TextStyle(
                         color: t.fg,
                         fontSize: 15,
                         fontWeight: FontWeight.w700)),
                 const SizedBox(height: 4),
-                Text('조식·중식 장소를 찾아보세요',
+                Text(context.l10n.eventRestaurantSubtitle,
                     style: TextStyle(color: t.fg3, fontSize: 12)),
               ],
             ),
@@ -555,7 +567,7 @@ class _CustomGolfDetailBody extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
       children: [
         if (event.dday > 7) ...[
-          Text('아직 예보 제공 전 · 라운드 7일 전부터 확인하세요',
+          Text(context.l10n.eventForecastNotYet,
               style: TextStyle(color: t.fg2)),
           const SizedBox(height: 16),
         ],
@@ -569,14 +581,14 @@ class _CustomGolfDetailBody extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('날씨 준비 중인 일정',
+              Text(context.l10n.eventWeatherPendingTitle,
                   style: TextStyle(
                       color: t.fg,
                       fontSize: 17,
                       fontWeight: FontWeight.w800)),
               const SizedBox(height: 8),
               Text(
-                '골프장 매칭 또는 예보 캐시가 아직 준비되지 않았습니다. 일정, 지도, 식당 추천은 사용할 수 있고 날씨는 잠시 후 다시 확인해 주세요.',
+                context.l10n.eventWeatherPendingDesc,
                 style: TextStyle(color: t.fg2, fontSize: 13, height: 1.4),
               ),
               const SizedBox(height: 16),
@@ -590,7 +602,7 @@ class _CustomGolfDetailBody extends StatelessWidget {
               if (!hasLocation) ...[
                 const SizedBox(height: 12),
                 Text(
-                  '지도 표시가 안 되면 일정 수정에서 골프장명과 주소를 함께 입력해 주세요.',
+                  context.l10n.eventMapHint,
                   style:
                       TextStyle(color: t.warn, fontSize: 12, height: 1.35),
                 ),
@@ -655,7 +667,7 @@ class _ScorecardEntry extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '스코어카드',
+                    context.l10n.eventScorecardTitle,
                     style: TextStyle(
                       color: t.fg,
                       fontSize: 15,
@@ -664,7 +676,7 @@ class _ScorecardEntry extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '18홀 타수·퍼트·페어웨이 기록',
+                    context.l10n.eventScorecardSubtitle,
                     style: TextStyle(color: t.fg3, fontSize: 12),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -738,7 +750,7 @@ class _ForecastTrendCard extends StatelessWidget {
               Icon(Icons.schedule_outlined, color: t.fg3, size: 15),
               const SizedBox(width: 6),
               Text(
-                '부킹 ${_bookingTimeLabel()} 기준',
+                context.l10n.eventBookingTimeBase(_bookingTimeLabel()),
                 style: TextStyle(color: t.fg3, fontSize: 12),
               ),
             ],
@@ -779,7 +791,8 @@ class _ForecastTrendCard extends StatelessWidget {
                                   isStart ? FontWeight.w800 : FontWeight.w500)),
                       SizedBox(
                         height: 16,
-                        child: Text(isStart ? '시작' : '',
+                        child: Text(
+                            isStart ? context.l10n.eventStartMarker : '',
                             style: TextStyle(
                                 color: t.accent,
                                 fontSize: 10,
@@ -834,7 +847,7 @@ class _ForecastTrendCard extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 4),
-                      Text('비 ${f.rainProb}%',
+                      Text(context.l10n.eventRainProb(f.rainProb),
                           style: TextStyle(color: t.fg3, fontSize: 11)),
                       const SizedBox(height: 2),
                       Text('${f.windSpeed.toStringAsFixed(1)}m/s',

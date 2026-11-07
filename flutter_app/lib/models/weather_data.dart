@@ -1,3 +1,5 @@
+import '../l10n/l10n.dart';
+
 /// 골프 날씨 API 응답 모델
 class GolfWeatherData {
   final String courseId;
@@ -131,12 +133,13 @@ class CancellationPolicy {
     // Older servers may return sample cancellation terms. Never display those
     // as a verified free-cancellation deadline, including in shared widgets.
     if (json['verified'] != true) {
-      return const CancellationPolicy(
+      return CancellationPolicy(
         urgency: 'NORMAL',
-        message: '취소 규정은 예약처에 확인해 주세요',
+        message: L10n.current.wxPolicyUnverified,
         sameDayPenalty: '',
         noshowPenalty: '',
-        rainCancel: RainCancelPolicy(available: false, condition: '', refundRule: ''),
+        rainCancel: const RainCancelPolicy(
+            available: false, condition: '', refundRule: ''),
         policySource: 'UNVERIFIED',
       );
     }
@@ -215,15 +218,15 @@ class ForecastItem {
   }
 
   String get timeLabel {
-    if (time.length >= 2) return '${time.substring(0, 2)}시';
-    return '--시';
+    if (time.length >= 2) return L10n.current.wxTimeLabel(time.substring(0, 2));
+    return L10n.current.wxTimeLabelUnknown;
   }
 
   String get weatherLabel {
-    if (rainProb >= 60) return '강한 비';
-    if (rainProb >= 40) return '약한 비';
-    if (rainProb >= 20) return '한두 방울';
-    return '맑음';
+    if (rainProb >= 60) return L10n.current.wxRainHeavy;
+    if (rainProb >= 40) return L10n.current.wxRainLight;
+    if (rainProb >= 20) return L10n.current.wxRainDrizzle;
+    return L10n.current.wxClear;
   }
 }
 
@@ -290,7 +293,7 @@ class MarineWeatherData {
       warning: MarineWarning(
         hasWarning: w['has_warning'] as bool? ?? false,
         departureBlocked: w['departure_blocked'] as bool? ?? false,
-        level: w['level'] as String? ?? '없음',
+        level: w['level'] as String? ?? L10n.current.commonNone,
         message: w['message'] as String? ?? '',
       ),
       current: MarineCurrent(
@@ -303,7 +306,7 @@ class MarineWeatherData {
               ?.map((e) => TideForecast.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],
-      goldenTime: json['golden_time'] as String? ?? '정보 없음',
+      goldenTime: json['golden_time'] as String? ?? L10n.current.wxNoInfo,
       aiRecommendation: AiRecommendation.fromJson(
           json['ai_recommendation'] as Map<String, dynamic>? ?? {}),
       safetyGuide: SafetyGuide.fromJson(sg),
@@ -373,7 +376,7 @@ class SafetyGuide {
     return SafetyGuide(
       boardingReport: BoardingReport(
         required_: br['required'] as bool? ?? true,
-        title: br['title'] as String? ?? '승선신고',
+        title: br['title'] as String? ?? L10n.current.wxBoardingReport,
         steps: (br['steps'] as List<dynamic>?)
                 ?.map((e) => e.toString())
                 .toList() ??

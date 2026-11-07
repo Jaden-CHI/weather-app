@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../config/app_theme.dart';
+import '../l10n/l10n.dart';
 import '../models/restaurant.dart';
 import '../services/restaurant_navigation_service.dart';
 import '../services/restaurant_service.dart';
@@ -79,7 +80,8 @@ class RestaurantDetailScreen extends StatelessWidget {
                                 color: t.accent.withValues(alpha: 0.35)),
                           ),
                           child: Text(
-                            '별점 ${restaurant.rating.toStringAsFixed(1)}',
+                            context.l10n.restRatingLabel(
+                                restaurant.rating.toStringAsFixed(1)),
                             style: TextStyle(
                               color: t.accent,
                               fontSize: 14,
@@ -91,7 +93,10 @@ class RestaurantDetailScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '${restaurant.distance.toStringAsFixed(1)}km · ${restaurant.category}',
+                    context.l10n.restDistanceCategory(
+                      restaurant.distance.toStringAsFixed(1),
+                      restaurant.category,
+                    ),
                     style: TextStyle(
                       color: t.fg3,
                       fontSize: 13,
@@ -100,10 +105,14 @@ class RestaurantDetailScreen extends StatelessWidget {
                   const SizedBox(height: 24),
 
                   // 정보 섹션
-                  _Section(title: '주소', content: restaurant.address),
+                  _Section(
+                      title: context.l10n.restAddressLabel,
+                      content: restaurant.address),
                   const SizedBox(height: 16),
 
-                  _Section(title: '영업시간', content: detail.hours),
+                  _Section(
+                      title: context.l10n.restHoursLabel,
+                      content: detail.hours),
                   const SizedBox(height: 16),
 
                   // 버튼들
@@ -117,7 +126,7 @@ class RestaurantDetailScreen extends StatelessWidget {
                             restaurant,
                           ),
                           icon: const Icon(Icons.navigation_outlined),
-                          label: const Text('길찾기'),
+                          label: Text(context.l10n.restDirections),
                           style: FilledButton.styleFrom(
                             backgroundColor: t.accent,
                             foregroundColor: t.accentInk,
@@ -132,7 +141,7 @@ class RestaurantDetailScreen extends StatelessWidget {
                               ? null
                               : () => _callPhoneNumber(detail.phone),
                           icon: const Icon(Icons.call),
-                          label: const Text('전화'),
+                          label: Text(context.l10n.restCall),
                           style: FilledButton.styleFrom(
                             backgroundColor: t.surface,
                             foregroundColor: t.fg,
@@ -150,7 +159,7 @@ class RestaurantDetailScreen extends StatelessWidget {
                       child: OutlinedButton.icon(
                         onPressed: _openPlaceReviews,
                         icon: const Icon(Icons.rate_review_outlined),
-                        label: const Text('후기 보기'),
+                        label: Text(context.l10n.restViewReviews),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: t.fg2,
                           side: BorderSide(color: t.line),
@@ -163,7 +172,7 @@ class RestaurantDetailScreen extends StatelessWidget {
 
                   // 리뷰 섹션
                   Text(
-                    '추천 기준',
+                    context.l10n.restRecommendationCriteria,
                     style: TextStyle(
                       color: t.fg,
                       fontSize: 16,

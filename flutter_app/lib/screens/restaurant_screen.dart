@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../config/app_theme.dart';
+import '../l10n/l10n.dart';
 import '../models/restaurant.dart';
 import '../models/restaurant_search_result.dart';
 import '../services/restaurant_navigation_service.dart';
@@ -46,6 +47,7 @@ class _RestaurantScreenState extends State<RestaurantScreen> {
   }
 
   Future<RestaurantSearchResult> _getRestaurants() async {
+    // 카카오 로컬 검색 쿼리 선택용 내부 카테고리 값 — 번역하지 않음
     final category = _selectedTab == 0 ? '조식' : '중식';
     var lat = widget.lat;
     var lng = widget.lng;
@@ -142,9 +144,9 @@ class _RestaurantScreenState extends State<RestaurantScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
             child: Row(
               children: [
-                _tabButton(t, 0, '조식'),
+                _tabButton(t, 0, context.l10n.restTabBreakfast),
                 const SizedBox(width: 20),
-                _tabButton(t, 1, '중식'),
+                _tabButton(t, 1, context.l10n.restTabLunch),
               ],
             ),
           ),
@@ -154,8 +156,9 @@ class _RestaurantScreenState extends State<RestaurantScreen> {
               alignment: Alignment.centerLeft,
               child: Text(
                 widget.courseAddress?.trim().isNotEmpty == true
-                    ? '카페·디저트 제외 · ${widget.courseAddress} 기준 가까운 순 우선'
-                    : '카페·디저트 제외 · 실제 후기는 상세에서 확인',
+                    ? context.l10n
+                        .restFilterNoteWithAddress(widget.courseAddress!)
+                    : context.l10n.restFilterNote,
                 style: TextStyle(
                   color: t.fg3,
                   fontSize: 12,
@@ -179,7 +182,7 @@ class _RestaurantScreenState extends State<RestaurantScreen> {
                     child: Padding(
                       padding: const EdgeInsets.all(20),
                       child: Text(
-                        '오류가 발생했습니다: ${snapshot.error}',
+                        context.l10n.restLoadError('${snapshot.error}'),
                         style: TextStyle(color: t.fg2),
                         textAlign: TextAlign.center,
                       ),
@@ -211,7 +214,10 @@ class _RestaurantScreenState extends State<RestaurantScreen> {
                     child: Padding(
                       padding: const EdgeInsets.all(20),
                       child: Text(
-                        '근처에 추천 식당이 없습니다\n(위치: ${widget.lat.toStringAsFixed(4)}, ${widget.lng.toStringAsFixed(4)})',
+                        context.l10n.restEmptyNearby(
+                          widget.lat.toStringAsFixed(4),
+                          widget.lng.toStringAsFixed(4),
+                        ),
                         style: TextStyle(color: t.fg2),
                         textAlign: TextAlign.center,
                       ),
@@ -300,7 +306,8 @@ class _RestaurantCard extends StatelessWidget {
                           Border.all(color: t.accent.withValues(alpha: 0.35)),
                     ),
                     child: Text(
-                      '별점 ${restaurant.rating.toStringAsFixed(1)}',
+                      context.l10n.restRatingLabel(
+                          restaurant.rating.toStringAsFixed(1)),
                       style: TextStyle(
                         color: t.accent,
                         fontSize: 12,
@@ -313,7 +320,10 @@ class _RestaurantCard extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              '${restaurant.distance.toStringAsFixed(1)}km · ${restaurant.category}',
+              context.l10n.restDistanceCategory(
+                restaurant.distance.toStringAsFixed(1),
+                restaurant.category,
+              ),
               style: TextStyle(
                 color: t.fg3,
                 fontSize: 12,
@@ -340,7 +350,7 @@ class _RestaurantCard extends StatelessWidget {
                       restaurant,
                     ),
                     icon: const Icon(Icons.navigation_outlined, size: 16),
-                    label: const Text('길찾기'),
+                    label: Text(context.l10n.restDirections),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: t.fg2,
                       side: BorderSide(color: t.line),
@@ -356,7 +366,7 @@ class _RestaurantCard extends StatelessWidget {
                       foregroundColor: t.accent,
                       padding: const EdgeInsets.symmetric(vertical: 10),
                     ),
-                    child: const Text('상세 보기'),
+                    child: Text(context.l10n.restViewDetails),
                   ),
                 ),
               ],

@@ -1,7 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../config/app_theme.dart';
+import '../l10n/l10n.dart';
 import '../models/golf_event.dart';
 import '../services/app_schedule_service.dart';
 import '../services/calendar_import_service.dart';
@@ -150,7 +152,7 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
 
     if (courseName.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('골프장을 입력해주세요')),
+        SnackBar(content: Text(context.l10n.schedEnterCourseName)),
       );
       return;
     }
@@ -176,7 +178,7 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('$courseName는 DB에 없어 날씨 알림 없이 커스텀 일정으로 저장합니다'),
+                content: Text(context.l10n.schedCourseNotInDb(courseName)),
               ),
             );
           }
@@ -248,7 +250,7 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('오류: $e')),
+          SnackBar(content: Text(context.l10n.schedErrorWithDetail('$e'))),
         );
       }
     } finally {
@@ -267,8 +269,8 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
 
       if (!result.permissionGranted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('캘린더 접근 권한이 필요합니다. 설정에서 캘린더 권한을 허용해 주세요.'),
+          SnackBar(
+            content: Text(context.l10n.schedCalendarPermissionNeeded),
           ),
         );
         return;
@@ -276,7 +278,7 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
 
       if (result.candidates.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('최근/예정 캘린더에서 골프 일정 후보를 찾지 못했어요.')),
+          SnackBar(content: Text(context.l10n.schedNoCalendarCandidates)),
         );
         return;
       }
@@ -288,7 +290,7 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('캘린더 일정을 불러오지 못했어요: $e')),
+          SnackBar(content: Text(context.l10n.schedCalendarImportFailed('$e'))),
         );
       }
     } finally {
@@ -326,7 +328,7 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
                       children: [
                         Expanded(
                           child: Text(
-                            '캘린더 일정 후보',
+                            context.l10n.schedCalendarCandidatesTitle,
                             style: TextStyle(
                               color: t.fg,
                               fontSize: 18,
@@ -344,7 +346,7 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: Text(
-                      '가져올 일정을 선택하면 골프장, 날짜, 티오프 시간이 입력됩니다.',
+                      context.l10n.schedCalendarCandidatesDesc,
                       style: TextStyle(color: t.fg2, fontSize: 13),
                     ),
                   ),
@@ -431,8 +433,8 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
                                   const SizedBox(height: 8),
                                   Text(
                                     candidate.portalPlace != null
-                                        ? '포털 검색으로 찾은 골프장이에요 (DB 외) — 주소를 확인해 주세요.'
-                                        : '골프장명은 저장 전 한 번 확인해 주세요.',
+                                        ? context.l10n.schedPortalFoundCourse
+                                        : context.l10n.schedVerifyCourseName,
                                     style: TextStyle(
                                       color: candidate.portalPlace != null
                                           ? t.accent
@@ -486,7 +488,7 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
     });
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('캘린더 일정 정보를 입력했습니다. 저장 전 확인해 주세요.')),
+      SnackBar(content: Text(context.l10n.schedCalendarApplied)),
     );
   }
 
@@ -503,7 +505,9 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          widget.editingEvent != null ? '일정 수정' : '새 일정 추가',
+          widget.editingEvent != null
+              ? context.l10n.schedEditSchedule
+              : context.l10n.schedAddNewSchedule,
           style: TextStyle(
               color: t.fg, fontSize: 18, fontWeight: FontWeight.w600),
         ),
@@ -515,7 +519,7 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                '라운드 정보를 입력하면 골프장 날씨와 알림을 함께 확인할 수 있습니다.',
+                context.l10n.schedIntro,
                 style: TextStyle(color: t.fg2, fontSize: 13),
               ),
               const SizedBox(height: 16),
@@ -523,32 +527,32 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
               const SizedBox(height: 20),
 
               // 날짜
-              _buildSectionLabel('날짜 *'),
+              _buildSectionLabel(context.l10n.schedDateLabel),
               _buildDateButton(),
               const SizedBox(height: 16),
 
               // 시간
-              _buildSectionLabel('시간 *'),
+              _buildSectionLabel(context.l10n.schedTimeLabel),
               _buildTimeButton(),
               const SizedBox(height: 16),
 
               // 골프장
-              _buildSectionLabel('골프장 *'),
+              _buildSectionLabel(context.l10n.schedCourseLabel),
               _buildCourseNameField(),
               const SizedBox(height: 16),
 
               // 주소
-              _buildSectionLabel('주소/위치 메모'),
-              _buildTextField(_addressController, '예: 경기도 용인시 처인구 ...'),
+              _buildSectionLabel(context.l10n.schedAddressLabel),
+              _buildTextField(_addressController, context.l10n.schedAddressHint),
               const SizedBox(height: 16),
 
               // 제목
-              _buildSectionLabel('제목'),
-              _buildTextField(_titleController, '예: 주말 라운드'),
+              _buildSectionLabel(context.l10n.schedTitleLabel),
+              _buildTextField(_titleController, context.l10n.schedTitleHint),
               const SizedBox(height: 16),
 
               // 알림
-              _buildSectionLabel('알림'),
+              _buildSectionLabel(context.l10n.schedNotifyLabel),
               _buildNotifyChips(),
               const SizedBox(height: 16),
 
@@ -562,7 +566,7 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
                     activeColor: t.accent,
                   ),
                   Text(
-                    '날씨 위험 알림 받기',
+                    context.l10n.schedWeatherAlertToggle,
                     style: TextStyle(color: t.fg2),
                   ),
                 ],
@@ -588,7 +592,9 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
                               strokeWidth: 2, color: t.accentInk),
                         )
                       : Text(
-                          widget.editingEvent != null ? '일정 수정' : '일정 저장',
+                          widget.editingEvent != null
+                              ? context.l10n.schedEditSchedule
+                              : context.l10n.schedSaveSchedule,
                           style: TextStyle(
                               color: t.accentInk,
                               fontSize: 16,
@@ -637,7 +643,9 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
               )
             : const Icon(Icons.event_available_outlined, size: 19),
         label: Text(
-          _isImportingCalendar ? '캘린더 확인 중' : '캘린더에서 가져오기',
+          _isImportingCalendar
+              ? context.l10n.schedCheckingCalendar
+              : context.l10n.schedImportFromCalendar,
           style: const TextStyle(fontWeight: FontWeight.w700),
         ),
       ),
@@ -648,7 +656,7 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
     final t = GwTheme.of(context);
     return Column(
       children: [
-        _buildTextField(_courseNameController, '예: 레이크사이드CC'),
+        _buildTextField(_courseNameController, context.l10n.schedCourseHint),
         if (_isSearchingCourses)
           Padding(
             padding: const EdgeInsets.only(top: 8),
@@ -749,15 +757,8 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              '${_selectedDate.month}월 ${_selectedDate.day}일 (${[
-                '월',
-                '화',
-                '수',
-                '목',
-                '금',
-                '토',
-                '일'
-              ][_selectedDate.weekday - 1]})',
+              DateFormat(context.l10n.schedDateFmt, context.l10n.localeName)
+                  .format(_selectedDate),
               style: TextStyle(color: t.fg, fontSize: 15),
             ),
             Icon(Icons.calendar_today, color: t.accent, size: 18),
@@ -822,7 +823,9 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
       spacing: 8,
       children: [6, 12, 24, 48, 168, 240].map((hours) {
         final selected = _notifyHours == hours;
-        final label = hours < 24 ? '$hours시간 전' : '${hours ~/ 24}일 전';
+        final label = hours < 24
+            ? context.l10n.schedHoursBefore(hours)
+            : context.l10n.schedDaysBefore(hours ~/ 24);
         return ChoiceChip(
           label: Text(label),
           selected: selected,
@@ -839,10 +842,9 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
   }
 
   String _formatCalendarDate(DateTime date) {
-    const weekdays = ['월', '화', '수', '목', '금', '토', '일'];
-    final weekday = weekdays[date.weekday - 1];
-    final hour = date.hour.toString().padLeft(2, '0');
-    final minute = date.minute.toString().padLeft(2, '0');
-    return '${date.year}.${date.month.toString().padLeft(2, '0')}.${date.day.toString().padLeft(2, '0')} ($weekday) $hour:$minute';
+    return DateFormat(
+      context.l10n.schedCalendarDateFmt,
+      context.l10n.localeName,
+    ).format(date);
   }
 }

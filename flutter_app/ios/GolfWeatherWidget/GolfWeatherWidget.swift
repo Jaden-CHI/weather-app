@@ -4,6 +4,9 @@ import SwiftUI
 // ── App Group에서 Flutter(home_widget)가 저장한 데이터 읽기 ──────
 private let appGroup = "group.com.weatherapp.widget"
 
+// 시스템 언어 기준 현지화 (위젯 콘텐츠 자체는 앱이 App Group에 앱 언어로 기록)
+private let isKorean = Locale.preferredLanguages.first?.hasPrefix("ko") ?? false
+
 struct WeatherEntry: TimelineEntry {
     let date: Date
     let ddayLabel: String
@@ -26,10 +29,14 @@ struct WeatherProvider: TimelineProvider {
     func placeholder(in context: Context) -> WeatherEntry {
         WeatherEntry(
             date: Date(), ddayLabel: "D-3",
-            courseName: "용인 컨트리클럽", status: "GREEN",
-            message: "라운딩 최적 날씨", temp: "18~24°C",
+            courseName: isKorean ? "용인 컨트리클럽" : "Pebble Creek CC",
+            status: "GREEN",
+            message: isKorean ? "라운딩 최적 날씨" : "Perfect weather for golf",
+            temp: "18~24°C",
             rainProb: "10%", windSpeed: "3m/s",
-            cancelMessage: "무료 취소 가능 — 23시간 남음",
+            cancelMessage: isKorean
+                ? "무료 취소 가능 — 23시간 남음"
+                : "Free cancellation — 23h left",
             waveHeight: "", goldenTime: "", departureBlocked: false
         )
     }
@@ -52,7 +59,8 @@ struct WeatherProvider: TimelineProvider {
             ddayLabel:        defaults?.string(forKey: "dday_label") ?? "",
             courseName:       defaults?.string(forKey: "course_name") ?? "Golf Windy",
             status:           defaults?.string(forKey: "status") ?? "NONE",
-            message:          defaults?.string(forKey: "status_message") ?? "앱을 열어 라운드를 등록해 주세요",
+            message:          defaults?.string(forKey: "status_message")
+                ?? (isKorean ? "앱을 열어 라운드를 등록해 주세요" : "Open the app to add a round"),
             temp:             defaults?.string(forKey: "temp") ?? "",
             rainProb:         defaults?.string(forKey: "rain_prob") ?? "",
             windSpeed:        defaults?.string(forKey: "wind_speed") ?? "",
@@ -213,7 +221,7 @@ struct GolfWeatherWidget: Widget {
             }
         }
         .configurationDisplayName("Golf Windy")
-        .description("다음 라운드 날씨 · 눌러서 앱 열기")
+        .description(isKorean ? "다음 라운드 날씨 · 눌러서 앱 열기" : "Next round weather · Tap to open")
         .supportedFamilies([
             .systemMedium,
             .accessoryRectangular,  // 잠금화면 (iOS 16+)

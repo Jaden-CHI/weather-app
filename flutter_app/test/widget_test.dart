@@ -16,8 +16,8 @@ void main() {
     await tester.pump();
 
     expect(find.byType(HomeScreen), findsOneWidget);
-    // 하단 탭바가 첫 프레임에 렌더링되는지 확인
-    for (final label in ['홈', '일정', '지도', '설정']) {
+    // 하단 탭바가 첫 프레임에 렌더링되는지 확인 (테스트 기본 로케일 = en)
+    for (final label in ['Home', 'Rounds', 'Map', 'Settings']) {
       expect(find.text(label), findsOneWidget);
     }
   });

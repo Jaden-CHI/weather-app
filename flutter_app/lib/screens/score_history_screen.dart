@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../config/app_theme.dart';
+import '../l10n/l10n.dart';
 import '../models/golf_event.dart';
 import '../models/golf_score.dart';
 import '../services/scorecard_service.dart';
@@ -68,22 +69,22 @@ class _ScoreHistoryScreenState extends State<ScoreHistoryScreen> {
         return AlertDialog(
           backgroundColor: t.surface,
           title: Text(
-            '스코어 삭제',
+            context.l10n.scoreDeleteTitle,
             style: TextStyle(color: t.fg),
           ),
           content: Text(
-            '${score.courseName} 기록을 삭제할까요?',
+            context.l10n.scoreDeleteConfirm(score.courseName),
             style: TextStyle(color: t.fg2),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text('취소'),
+              child: Text(context.l10n.commonCancel),
             ),
             TextButton(
               onPressed: () => Navigator.pop(context, true),
               child: Text(
-                '삭제',
+                context.l10n.commonDelete,
                 style: TextStyle(color: t.danger),
               ),
             ),
@@ -97,7 +98,7 @@ class _ScoreHistoryScreenState extends State<ScoreHistoryScreen> {
     if (!mounted) return;
     setState(_reload);
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('스코어 기록을 삭제했습니다.')),
+      SnackBar(content: Text(context.l10n.scoreDeletedSnack)),
     );
   }
 
@@ -112,7 +113,7 @@ class _ScoreHistoryScreenState extends State<ScoreHistoryScreen> {
     if (!mounted) return;
     setState(_reload);
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('골프장 이름을 수정했습니다.')),
+      SnackBar(content: Text(context.l10n.scoreCourseNameUpdatedSnack)),
     );
   }
 
@@ -143,7 +144,7 @@ class _ScoreHistoryScreenState extends State<ScoreHistoryScreen> {
             return AlertDialog(
               backgroundColor: t.surface,
               title: Text(
-                'OCR 스캐닝',
+                context.l10n.scoreOcrScanning,
                 style: TextStyle(color: t.fg),
               ),
               content: SingleChildScrollView(
@@ -153,7 +154,7 @@ class _ScoreHistoryScreenState extends State<ScoreHistoryScreen> {
                   children: [
                     const SizedBox(height: 14),
                     Text(
-                      '라운드 날짜',
+                      context.l10n.scoreRoundDate,
                       style: TextStyle(
                         color: t.fg3,
                         fontSize: 12,
@@ -166,13 +167,13 @@ class _ScoreHistoryScreenState extends State<ScoreHistoryScreen> {
                       runSpacing: 8,
                       children: [
                         _QuickDateChip(
-                          label: '오늘',
+                          label: context.l10n.scoreToday,
                           isSelected: _isSameDay(selectedDate, DateTime.now()),
                           onTap: () => setDialogState(
                               () => selectedDate = DateTime.now()),
                         ),
                         _QuickDateChip(
-                          label: '어제',
+                          label: context.l10n.scoreYesterday,
                           isSelected: _isSameDay(
                             selectedDate,
                             DateTime.now().subtract(const Duration(days: 1)),
@@ -183,7 +184,7 @@ class _ScoreHistoryScreenState extends State<ScoreHistoryScreen> {
                           ),
                         ),
                         _QuickDateChip(
-                          label: '7일 전',
+                          label: context.l10n.scoreSevenDaysAgo,
                           isSelected: _isSameDay(
                             selectedDate,
                             DateTime.now().subtract(const Duration(days: 7)),
@@ -215,7 +216,7 @@ class _ScoreHistoryScreenState extends State<ScoreHistoryScreen> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      '골프장 이름은 먼저 입력하지 않아도 됩니다. 먼저 OCR로 읽고, 필요한 경우에만 마지막에 보정할게요.',
+                      context.l10n.scoreOcrNoCourseNameHint,
                       style: TextStyle(
                         color: t.fg3,
                         fontSize: 12,
@@ -227,7 +228,7 @@ class _ScoreHistoryScreenState extends State<ScoreHistoryScreen> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(dialogContext),
-                  child: const Text('취소'),
+                  child: Text(context.l10n.commonCancel),
                 ),
                 FilledButton(
                   onPressed: () {
@@ -240,7 +241,7 @@ class _ScoreHistoryScreenState extends State<ScoreHistoryScreen> {
                       ),
                     );
                   },
-                  child: const Text('OCR 스캔 시작'),
+                  child: Text(context.l10n.scoreOcrStart),
                 ),
               ],
             );
@@ -273,10 +274,10 @@ class _ScoreHistoryScreenState extends State<ScoreHistoryScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         foregroundColor: t.fg,
-        title: const Text('스코어 관리'),
+        title: Text(context.l10n.scoreHistoryTitle),
         actions: [
           IconButton(
-            tooltip: 'OCR 스캐닝',
+            tooltip: context.l10n.scoreOcrScanning,
             onPressed: _createScoreFromOcr,
             icon: const Icon(Icons.add_a_photo_outlined),
           ),
@@ -326,7 +327,7 @@ class _ScoreHistoryScreenState extends State<ScoreHistoryScreen> {
                   onCreateRound: _createScoreFromOcr,
                 ),
                 const SizedBox(height: 20),
-                const _SectionTitle('최근 라운드'),
+                _SectionTitle(context.l10n.scoreRecentRounds),
                 const SizedBox(height: 10),
                 ...scores.map(
                   (score) => Padding(
@@ -476,7 +477,7 @@ class _PremiumBanner extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  '라이프베스트',
+                  context.l10n.scoreLifeBest,
                   style: TextStyle(
                     color: t.fg,
                     fontSize: 18,
@@ -511,13 +512,17 @@ class _PremiumBanner extends StatelessWidget {
             spacing: 8,
             runSpacing: 8,
             children: [
+              _FeatureChip(context.l10n.scoreRecentAvgChip(
+                  stats.recentAverageScore.toStringAsFixed(1))),
               _FeatureChip(
-                  '최근 5R 평균 ${stats.recentAverageScore.toStringAsFixed(1)}'),
-              _FeatureChip('이번 달 ${stats.roundCountThisMonth}R'),
-              _FeatureChip('동반자 기록 ${stats.companionRoundCount}R'),
-              _FeatureChip('세부 완료 ${stats.completeRoundCount}R'),
+                  context.l10n.scoreThisMonthChip(stats.roundCountThisMonth)),
+              _FeatureChip(
+                  context.l10n.scoreCompanionChip(stats.companionRoundCount)),
+              _FeatureChip(context.l10n
+                  .scoreDetailCompleteChip(stats.completeRoundCount)),
               if (stats.incompleteRoundCount > 0)
-                _FeatureChip('선택 보정 ${stats.incompleteRoundCount}R'),
+                _FeatureChip(context.l10n
+                    .scoreOptionalFixChip(stats.incompleteRoundCount)),
             ],
           ),
         ],
@@ -575,7 +580,7 @@ class _TrackingResumeCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        '선택 세부 지표 ${scores.length}건',
+                        context.l10n.scoreOptionalMetricsCount(scores.length),
                         style: TextStyle(
                           color: t.fg,
                           fontSize: 17,
@@ -615,7 +620,7 @@ class _TrackingResumeCard extends StatelessWidget {
             Row(
               children: [
                 Text(
-                  '세부 기록 $completion%',
+                  context.l10n.scoreDetailRecordPercent(completion),
                   style: TextStyle(
                     color: t.fg,
                     fontSize: 12,
@@ -624,7 +629,8 @@ class _TrackingResumeCard extends StatelessWidget {
                 ),
                 const Spacer(),
                 Text(
-                  '선택 입력 ${first.incompleteHoleCount}홀',
+                  context.l10n
+                      .scoreOptionalInputHoles(first.incompleteHoleCount),
                   style: TextStyle(
                     color: t.warn,
                     fontSize: 12,
@@ -651,13 +657,20 @@ class _TrackingResumeCard extends StatelessWidget {
               runSpacing: 8,
               children: [
                 _FeatureChip(
-                  '퍼트 ${first.puttsTrackedCount}/${first.holes.length}홀',
+                  context.l10n.scorePuttsTrackedChip(
+                    first.puttsTrackedCount,
+                    first.holes.length,
+                  ),
                 ),
                 _FeatureChip(
-                  '페어웨이 ${first.fairwayTrackedCount}/${first.fairwayOpportunityCount}홀',
+                  context.l10n.scoreFairwayTrackedChip(
+                    first.fairwayTrackedCount,
+                    first.fairwayOpportunityCount,
+                  ),
                 ),
                 if (first.firstIncompleteHoleNumber != null)
-                  _FeatureChip('첫 선택 항목 ${first.firstIncompleteHoleNumber}H'),
+                  _FeatureChip(context.l10n.scoreFirstIncompleteChip(
+                      first.firstIncompleteHoleNumber!)),
               ],
             ),
           ],
@@ -674,6 +687,7 @@ class _StatsGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return GridView.count(
       physics: const NeverScrollableScrollPhysics(),
       shrinkWrap: true,
@@ -682,25 +696,35 @@ class _StatsGrid extends StatelessWidget {
       crossAxisSpacing: 10,
       mainAxisSpacing: 10,
       children: [
-        _StatCard(label: '총 라운드', value: '${stats.roundCount}회'),
-        _StatCard(label: '올해 라운드', value: '${stats.roundCountThisYear}회'),
-        _StatCard(label: '이번 달', value: '${stats.roundCountThisMonth}회'),
         _StatCard(
-          label: '최근 5R 평균',
+          label: l10n.scoreTotalRounds,
+          value: l10n.scoreTimesCount(stats.roundCount),
+        ),
+        _StatCard(
+          label: l10n.scoreRoundsThisYear,
+          value: l10n.scoreTimesCount(stats.roundCountThisYear),
+        ),
+        _StatCard(
+          label: l10n.scoreThisMonth,
+          value: l10n.scoreTimesCount(stats.roundCountThisMonth),
+        ),
+        _StatCard(
+          label: l10n.scoreRecentAvgLabel,
           value: stats.recentAverageScore.toStringAsFixed(1),
         ),
         _StatCard(
-          label: '동반자 기록',
-          value: '${stats.companionRoundCount}회',
-          caption:
-              stats.companionRoundCount == 0 ? '아직 기록 전' : '동반자 정보가 함께 저장된 라운드',
+          label: l10n.scoreCompanionRecords,
+          value: l10n.scoreTimesCount(stats.companionRoundCount),
+          caption: stats.companionRoundCount == 0
+              ? l10n.scoreNotRecordedYet
+              : l10n.scoreCompanionSavedCaption,
         ),
         _StatCard(
-          label: '선택 보정',
-          value: '${stats.incompleteRoundCount}회',
+          label: l10n.scoreOptionalFix,
+          value: l10n.scoreTimesCount(stats.incompleteRoundCount),
           caption: stats.incompleteRoundCount == 0
-              ? '스코어 기록은 모두 저장됨'
-              : '퍼트/페어웨이 등 선택 세부 지표',
+              ? l10n.scoreAllScoresSaved
+              : l10n.scoreOptionalDetailCaption,
         ),
       ],
     );
@@ -723,6 +747,7 @@ class _ScoreListTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = GwTheme.of(context);
+    final l10n = context.l10n;
     final badges = <_RoundStatusBadgeData>[
       _RoundStatusBadgeData(
         label: score.trackingStageLabel,
@@ -735,26 +760,28 @@ class _ScoreListTile extends StatelessWidget {
       ),
       if (score.companions.isNotEmpty)
         _RoundStatusBadgeData(
-          label: '동반자 ${score.companions.length}명',
+          label: l10n.scoreCompanionCountBadge(score.companions.length),
           backgroundColor: t.surface2,
           foregroundColor: t.accent,
         ),
       if (score.hasCompletePuttTracking)
         _RoundStatusBadgeData(
-          label: '퍼트 기록',
+          label: l10n.scorePuttRecordBadge,
           backgroundColor: t.surface2,
           foregroundColor: t.accent,
         ),
       if (score.hasCompleteFairwayTracking)
         _RoundStatusBadgeData(
-          label: '페어웨이 기록',
+          label: l10n.scoreFairwayRecordBadge,
           backgroundColor: t.surface2,
           foregroundColor: t.warn,
         ),
       if (score.hasFairwayTracking && !score.hasCompleteFairwayTracking)
         _RoundStatusBadgeData(
-          label:
-              '페어웨이 ${score.fairwayTrackedCount}/${score.fairwayOpportunityCount}홀',
+          label: l10n.scoreFairwayTrackedChip(
+            score.fairwayTrackedCount,
+            score.fairwayOpportunityCount,
+          ),
           backgroundColor: t.surface2,
           foregroundColor: t.warn,
         ),
@@ -762,14 +789,17 @@ class _ScoreListTile extends StatelessWidget {
           !score.hasCompletePuttTracking &&
           !score.hasFairwayTracking)
         _RoundStatusBadgeData(
-          label: '스코어 저장',
+          label: l10n.scoreStageScoreOnly,
           backgroundColor: t.surface2,
           foregroundColor: t.fg2,
         ),
     ];
-    final trackingSummary =
-        '선택 지표: 퍼트 ${score.puttsTrackedCount}/${score.holes.length}홀 · '
-        '페어웨이 ${score.fairwayTrackedCount}/${score.fairwayOpportunityCount}홀';
+    final trackingSummary = l10n.scoreTrackingSummary(
+      score.puttsTrackedCount,
+      score.holes.length,
+      score.fairwayTrackedCount,
+      score.fairwayOpportunityCount,
+    );
     final completion = score.trackingCompletionPercent;
     final companionPreview = _buildCompanionPreview(score.companions);
 
@@ -856,7 +886,7 @@ class _ScoreListTile extends StatelessWidget {
                             ),
                             const SizedBox(width: 5),
                             Text(
-                              '골프장명 수정',
+                              l10n.scoreEditCourseName,
                               style: TextStyle(
                                 color: t.accent,
                                 fontSize: 11,
@@ -893,7 +923,7 @@ class _ScoreListTile extends StatelessWidget {
                   ],
                   const SizedBox(height: 6),
                   Text(
-                    '${score.trackingStageDescription} · 세부 기록 $completion% · $trackingSummary',
+                    '${score.trackingStageDescription} · ${l10n.scoreDetailRecordPercent(completion)} · $trackingSummary',
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
@@ -909,7 +939,7 @@ class _ScoreListTile extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 IconButton(
-                  tooltip: '골프장명 수정',
+                  tooltip: l10n.scoreEditCourseName,
                   onPressed: onEdit,
                   icon: Icon(
                     Icons.edit_outlined,
@@ -917,7 +947,7 @@ class _ScoreListTile extends StatelessWidget {
                   ),
                 ),
                 IconButton(
-                  tooltip: '삭제',
+                  tooltip: l10n.commonDelete,
                   onPressed: onDelete,
                   icon: Icon(
                     Icons.delete_outline,
@@ -1045,7 +1075,7 @@ class _EditCourseNameDialogState extends State<_EditCourseNameDialog> {
     return AlertDialog(
       backgroundColor: t.surface,
       title: Text(
-        '골프장명 수정',
+        context.l10n.scoreEditCourseName,
         style: TextStyle(color: t.fg),
       ),
       content: SizedBox(
@@ -1055,7 +1085,7 @@ class _EditCourseNameDialogState extends State<_EditCourseNameDialog> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'OCR로 저장된 골프장명이 비었거나 다르면 여기서 바로 고칠 수 있어요.',
+              context.l10n.scoreEditCourseNameDesc,
               style: TextStyle(
                 color: t.fg3,
                 fontSize: 12,
@@ -1067,9 +1097,9 @@ class _EditCourseNameDialogState extends State<_EditCourseNameDialog> {
               controller: _controller,
               autofocus: true,
               style: TextStyle(color: t.fg),
-              decoration: const InputDecoration(
-                labelText: '골프장 이름',
-                hintText: '예: 드림파크CC',
+              decoration: InputDecoration(
+                labelText: context.l10n.scoreCourseNameLabel,
+                hintText: context.l10n.scoreCourseNameHint,
               ),
               onSubmitted: (_) => hasText ? _submit() : null,
             ),
@@ -1157,11 +1187,11 @@ class _EditCourseNameDialogState extends State<_EditCourseNameDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('취소'),
+          child: Text(context.l10n.commonCancel),
         ),
         FilledButton(
           onPressed: hasText ? _submit : null,
-          child: const Text('저장'),
+          child: Text(context.l10n.commonSave),
         ),
       ],
     );
@@ -1175,9 +1205,11 @@ String? _buildCompanionPreview(List<CompanionScore> companions) {
       .where((name) => name.isNotEmpty)
       .toList(growable: false);
   if (names.isEmpty) return null;
-  if (names.length == 1) return '동반자 ${names.first}';
-  if (names.length == 2) return '동반자 ${names[0]} · ${names[1]}';
-  return '동반자 ${names[0]} · ${names[1]} 외 ${names.length - 2}명';
+  if (names.length == 1) return L10n.current.scoreCompanionOne(names.first);
+  if (names.length == 2) {
+    return L10n.current.scoreCompanionTwo(names[0], names[1]);
+  }
+  return L10n.current.scoreCompanionMore(names[0], names[1], names.length - 2);
 }
 
 class _RoundStatusBadgeData {
@@ -1262,7 +1294,7 @@ class _OcrGuideCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '스코어카드 OCR 스캔',
+                      context.l10n.scoreOcrCardTitle,
                       style: TextStyle(
                         color: t.fg,
                         fontSize: 16,
@@ -1271,7 +1303,7 @@ class _OcrGuideCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      '일정 상세의 스코어카드에서 사진을 읽어 적용',
+                      context.l10n.scoreOcrCardDesc,
                       style: TextStyle(
                         color: t.fg3,
                         fontSize: 12,
@@ -1291,7 +1323,7 @@ class _OcrGuideCard extends StatelessWidget {
                   child: FilledButton.icon(
                     onPressed: onCreateRound,
                     icon: const Icon(Icons.add_a_photo_outlined),
-                    label: const Text('OCR 스캐닝'),
+                    label: Text(context.l10n.scoreOcrScanning),
                     style: FilledButton.styleFrom(
                       backgroundColor: t.accent,
                       foregroundColor: t.accentInk,
@@ -1306,7 +1338,7 @@ class _OcrGuideCard extends StatelessWidget {
                   child: OutlinedButton.icon(
                     onPressed: onTap,
                     icon: const Icon(Icons.help_outline),
-                    label: const Text('OCR 가이드'),
+                    label: Text(context.l10n.scoreOcrGuide),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: t.fg,
                       side: BorderSide(
@@ -1366,7 +1398,7 @@ class _EmptyScoreState extends StatelessWidget {
                 ),
                 const SizedBox(height: 18),
                 Text(
-                  '아직 저장된 스코어가 없습니다',
+                  context.l10n.scoreEmptyTitle,
                   style: TextStyle(
                     color: t.fg,
                     fontSize: 18,
@@ -1375,7 +1407,7 @@ class _EmptyScoreState extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  '일정 상세 화면에서 스코어카드를 열고 저장하거나\n지난 라운드를 OCR로 바로 등록하면 기록이 여기에 쌓입니다.',
+                  context.l10n.scoreEmptyDesc,
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: t.fg3,
@@ -1435,7 +1467,7 @@ class _OcrReadySheet extends StatelessWidget {
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    '스코어카드 OCR 가져오기',
+                    context.l10n.scoreOcrSheetTitle,
                     style: TextStyle(
                       color: t.fg,
                       fontSize: 19,
@@ -1447,7 +1479,7 @@ class _OcrReadySheet extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             Text(
-              '일정 상세에서 바로 스캔할 수도 있고, 지난 라운드도 OCR 등록으로 기록을 시작할 수 있습니다.',
+              context.l10n.scoreOcrSheetDesc,
               style: TextStyle(
                 color: t.fg2,
                 fontSize: 13,
@@ -1455,17 +1487,17 @@ class _OcrReadySheet extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 16),
-            const _OcrStep(
+            _OcrStep(
               number: '1',
-              text: '스코어카드 화면을 캡처하거나 종이 스코어카드를 촬영',
+              text: context.l10n.scoreOcrStep1,
             ),
-            const _OcrStep(
+            _OcrStep(
               number: '2',
-              text: '일정 상세 스코어카드 또는 OCR 스캐닝에서 이미지 선택',
+              text: context.l10n.scoreOcrStep2,
             ),
-            const _OcrStep(
+            _OcrStep(
               number: '3',
-              text: '홀별 점수를 확인하면 자동 저장되고, 필요할 때만 보정',
+              text: context.l10n.scoreOcrStep3,
             ),
             const SizedBox(height: 18),
             Row(
@@ -1479,7 +1511,7 @@ class _OcrReadySheet extends StatelessWidget {
                       });
                     },
                     icon: const Icon(Icons.add_a_photo_outlined),
-                    label: const Text('OCR 시작'),
+                    label: Text(context.l10n.scoreOcrStartShort),
                     style: FilledButton.styleFrom(
                       backgroundColor: t.accent,
                       foregroundColor: t.accentInk,
@@ -1501,7 +1533,7 @@ class _OcrReadySheet extends StatelessWidget {
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  child: const Text('닫기'),
+                  child: Text(context.l10n.commonClose),
                 ),
               ],
             ),

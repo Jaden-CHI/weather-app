@@ -9,6 +9,7 @@ import 'package:webview_flutter/webview_flutter.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import '../config/app_config.dart';
 import '../config/app_theme.dart';
+import '../l10n/l10n.dart';
 import '../config/whats_new.dart';
 import '../utils/map_html.dart';
 import '../models/golf_event.dart';
@@ -40,15 +41,22 @@ _Status _statusOf(GwTheme t, String s) => switch (s) {
           color: t.success,
           bg: t.successBg,
           border: t.successBorder,
-          label: '최적'),
+          label: L10n.current.homeStatusGreen),
       'YELLOW' => _Status(
-          color: t.warn, bg: t.warnBg, border: t.warnBorder, label: '주의'),
+          color: t.warn,
+          bg: t.warnBg,
+          border: t.warnBorder,
+          label: L10n.current.homeStatusYellow),
       'RED' => _Status(
           color: t.danger,
           bg: t.dangerBg,
           border: t.dangerBorder,
-          label: '취소권장'),
-      _ => _Status(color: t.fg3, bg: t.line, border: t.line, label: '정보없음'),
+          label: L10n.current.homeStatusRed),
+      _ => _Status(
+          color: t.fg3,
+          bg: t.line,
+          border: t.line,
+          label: L10n.current.homeStatusNone),
     };
 
 // ── 일정별 날씨 로딩 (히어로/리스트 공용) ──────────────────────
@@ -284,49 +292,51 @@ class _AppTutorialDialog extends StatefulWidget {
 }
 
 class _AppTutorialDialogState extends State<_AppTutorialDialog> {
-  static const _steps = [
-    _TutorialStepData(
-      icon: Icons.home_outlined,
-      title: '홈에서 바로 확인',
-      description: '다가오는 라운드와 날씨 권고를 첫 화면에서 바로 볼 수 있어요.',
-      bullets: [
-        'GREEN / YELLOW / RED 권고를 빠르게 확인',
-        '아래로 당겨 최신 예보 다시 불러오기',
-      ],
-    ),
-    _TutorialStepData(
-      icon: Icons.calendar_today_outlined,
-      title: '일정 등록은 간단하게',
-      description: '일정 탭에서 골프장을 선택하고 티오프 시간을 저장하면 준비가 끝납니다.',
-      bullets: [
-        '골프장 검색 후 일정 생성',
-        '일정 상세에서 날씨와 스코어카드 연결',
-      ],
-    ),
-    _TutorialStepData(
-      icon: Icons.map_outlined,
-      title: '지도와 맛집 확인',
-      description: '지도 탭에서 선택한 골프장 위치와 근처 식당을 함께 확인할 수 있어요.',
-      bullets: [
-        '네이버 지도에서 골프장 위치 확인',
-        '조식/중식 추천 위치를 주변 기준으로 탐색',
-      ],
-    ),
-    _TutorialStepData(
-      icon: Icons.document_scanner_outlined,
-      title: 'OCR로 지난 라운드도 저장',
-      description: '스코어 관리에서 사진만 선택하면 지난 라운드 기록을 빠르게 남길 수 있어요.',
-      bullets: [
-        '일정 상세 또는 스코어 관리에서 OCR 시작',
-        '설정에서 언제든 튜토리얼 다시 보기 가능',
-      ],
-    ),
-  ];
+  static const _stepCount = 4;
+
+  List<_TutorialStepData> _buildSteps(AppLocalizations l10n) => [
+        _TutorialStepData(
+          icon: Icons.home_outlined,
+          title: l10n.tutStep1Title,
+          description: l10n.tutStep1Desc,
+          bullets: [
+            l10n.tutStep1Bullet1,
+            l10n.tutStep1Bullet2,
+          ],
+        ),
+        _TutorialStepData(
+          icon: Icons.calendar_today_outlined,
+          title: l10n.tutStep2Title,
+          description: l10n.tutStep2Desc,
+          bullets: [
+            l10n.tutStep2Bullet1,
+            l10n.tutStep2Bullet2,
+          ],
+        ),
+        _TutorialStepData(
+          icon: Icons.map_outlined,
+          title: l10n.tutStep3Title,
+          description: l10n.tutStep3Desc,
+          bullets: [
+            l10n.tutStep3Bullet1,
+            l10n.tutStep3Bullet2,
+          ],
+        ),
+        _TutorialStepData(
+          icon: Icons.document_scanner_outlined,
+          title: l10n.tutStep4Title,
+          description: l10n.tutStep4Desc,
+          bullets: [
+            l10n.tutStep4Bullet1,
+            l10n.tutStep4Bullet2,
+          ],
+        ),
+      ];
 
   final PageController _pageController = PageController();
   int _currentPage = 0;
 
-  bool get _isLastPage => _currentPage == _steps.length - 1;
+  bool get _isLastPage => _currentPage == _stepCount - 1;
 
   @override
   void dispose() {
@@ -348,6 +358,8 @@ class _AppTutorialDialogState extends State<_AppTutorialDialog> {
   @override
   Widget build(BuildContext context) {
     final t = GwTheme.of(context);
+    final l10n = context.l10n;
+    final steps = _buildSteps(l10n);
     return Dialog(
       backgroundColor: Colors.transparent,
       insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
@@ -382,7 +394,7 @@ class _AppTutorialDialogState extends State<_AppTutorialDialog> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Golf Windy 빠른 안내',
+                        l10n.tutTitle,
                         style: TextStyle(
                           color: t.fg,
                           fontSize: 20,
@@ -391,7 +403,7 @@ class _AppTutorialDialogState extends State<_AppTutorialDialog> {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        '핵심 기능만 짧게 보고 바로 시작할게요.',
+                        l10n.tutSubtitle,
                         style: TextStyle(
                           color: t.fg3,
                           fontSize: 12,
@@ -402,7 +414,7 @@ class _AppTutorialDialogState extends State<_AppTutorialDialog> {
                 ),
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  child: Text('건너뛰기', style: TextStyle(color: t.fg2)),
+                  child: Text(l10n.commonSkip, style: TextStyle(color: t.fg2)),
                 ),
               ],
             ),
@@ -411,16 +423,16 @@ class _AppTutorialDialogState extends State<_AppTutorialDialog> {
               height: 330,
               child: PageView.builder(
                 controller: _pageController,
-                itemCount: _steps.length,
+                itemCount: steps.length,
                 onPageChanged: (index) {
                   setState(() => _currentPage = index);
                 },
                 itemBuilder: (context, index) {
-                  final step = _steps[index];
+                  final step = steps[index];
                   return _TutorialStepCard(
                     step: step,
                     pageIndex: index,
-                    pageCount: _steps.length,
+                    pageCount: steps.length,
                   );
                 },
               ),
@@ -428,7 +440,7 @@ class _AppTutorialDialogState extends State<_AppTutorialDialog> {
             const SizedBox(height: 18),
             Row(
               children: [
-                ...List.generate(_steps.length, (index) {
+                ...List.generate(steps.length, (index) {
                   final selected = index == _currentPage;
                   return AnimatedContainer(
                     duration: const Duration(milliseconds: 180),
@@ -450,7 +462,7 @@ class _AppTutorialDialogState extends State<_AppTutorialDialog> {
                         curve: Curves.easeOut,
                       );
                     },
-                    child: Text('이전', style: TextStyle(color: t.fg2)),
+                    child: Text(l10n.tutPrev, style: TextStyle(color: t.fg2)),
                   ),
                 const SizedBox(width: 6),
                 FilledButton(
@@ -463,7 +475,8 @@ class _AppTutorialDialogState extends State<_AppTutorialDialog> {
                       vertical: 12,
                     ),
                   ),
-                  child: Text(_isLastPage ? '시작하기' : '다음'),
+                  child: Text(
+                      _isLastPage ? l10n.commonStart : l10n.commonNext),
                 ),
               ],
             ),
@@ -587,7 +600,7 @@ class _TutorialStepCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(16),
           ),
           child: Text(
-            '튜토리얼은 설정 탭에서 언제든 다시 볼 수 있어요.',
+            context.l10n.tutFooter,
             style: TextStyle(
               color: t.fg2,
               fontSize: 12,
@@ -623,25 +636,25 @@ class _BottomBar extends StatelessWidget {
               _NavItem(
                   idx: 0,
                   icon: Icons.home_outlined,
-                  label: '홈',
+                  label: context.l10n.navHome,
                   active: active,
                   onTap: onChanged),
               _NavItem(
                   idx: 1,
                   icon: Icons.calendar_today_outlined,
-                  label: '일정',
+                  label: context.l10n.navSchedule,
                   active: active,
                   onTap: onChanged),
               _NavItem(
                   idx: 2,
                   icon: Icons.map_outlined,
-                  label: '지도',
+                  label: context.l10n.navMap,
                   active: active,
                   onTap: onChanged),
               _NavItem(
                   idx: 3,
                   icon: Icons.tune,
-                  label: '설정',
+                  label: context.l10n.navSettings,
                   active: active,
                   onTap: onChanged),
             ],
@@ -705,12 +718,11 @@ class _GolfTab extends StatelessWidget {
     return async.when(
       loading: () =>
           Center(child: CircularProgressIndicator(color: t.accent)),
-      error: (e, _) => _ErrorView('캘린더 오류: $e'),
+      error: (e, _) => _ErrorView(context.l10n.homeCalendarError('$e')),
       data: (events) {
         if (events.isEmpty) {
           return const _EmptyView(
             icon: Icons.flag_outlined,
-            activity: '골프',
           );
         }
         return RefreshIndicator(
@@ -727,7 +739,8 @@ class _GolfTab extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _SectionLabel('다가오는 라운드 · ${events.length - 1}'),
+                      _SectionLabel(
+                          context.l10n.homeUpcomingRounds(events.length - 1)),
                       const SizedBox(height: 11),
                       ...events.skip(1).map((e) => _GolfRowCard(event: e)),
                     ],
@@ -830,8 +843,8 @@ class _HomeHeroState extends State<_HomeHero> {
                         children: [
                           Text(
                             e.dday == 0
-                                ? '다음 라운드 · D-DAY'
-                                : '다음 라운드 · D-${e.dday}',
+                                ? context.l10n.homeNextRoundDday
+                                : context.l10n.homeNextRoundDdayN(e.dday),
                             style: TextStyle(
                               color: t.accent,
                               fontSize: 12.5,
@@ -850,7 +863,8 @@ class _HomeHeroState extends State<_HomeHero> {
                           ),
                           const SizedBox(height: 3),
                           Text(
-                            '${e.formattedDate} ${e.formattedTime} 티오프',
+                            context.l10n
+                                .homeTeeOffAt(e.formattedDate, e.formattedTime),
                             style: TextStyle(color: t.fg2, fontSize: 13),
                           ),
                         ],
@@ -891,8 +905,8 @@ class _HomeHeroState extends State<_HomeHero> {
                       ),
                       children: [
                         TextSpan(
-                          text:
-                              ' · 체감 ${_feelsLike(tee.temp, tee.windSpeed).round()}°',
+                          text: context.l10n.homeFeelsLikeInline(
+                              _feelsLike(tee.temp, tee.windSpeed).round()),
                           style: TextStyle(
                             color: t.fg2,
                             fontSize: 14,
@@ -912,7 +926,7 @@ class _HomeHeroState extends State<_HomeHero> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 if (_wx != null && _wx!.forecast.isNotEmpty) ...[
-                  const _SectionLabel('티오프 시간대 예보'),
+                  _SectionLabel(context.l10n.homeTeeOffForecast),
                   const SizedBox(height: 11),
                   _TeeOffStrip(
                     forecast: _wx!.forecast,
@@ -928,7 +942,7 @@ class _HomeHeroState extends State<_HomeHero> {
                   const SizedBox(height: 8),
                   _weatherResolved
                       ? (e.dday > 7
-                          ? Text('아직 예보 제공 전 · 라운드 7일 전부터 확인하세요',
+                          ? Text(context.l10n.homeForecastNotYet,
                               style: TextStyle(color: t.fg2, fontSize: 13))
                           : const _WxUnavailable())
                       : const _WxLoading(),
@@ -1075,7 +1089,9 @@ class _AlertBanner extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  danger ? '악천후 — 취소 권고' : '기상 주의',
+                  danger
+                      ? context.l10n.homeAlertSevere
+                      : context.l10n.homeAlertCaution,
                   style: TextStyle(
                     color: color,
                     fontSize: 14,
@@ -1128,12 +1144,15 @@ class _StatRow extends StatelessWidget {
       ),
       child: Row(
         children: [
-          cell('체감온도', '${_feelsLike(tee.temp, tee.windSpeed).round()}°',
+          cell(
+              context.l10n.homeStatFeelsLike,
+              '${_feelsLike(tee.temp, tee.windSpeed).round()}°',
               t.fg),
           Container(width: 1, height: 40, color: t.line),
-          cell('강수확률', '${tee.rainProb}%', t.sky),
+          cell(context.l10n.homeStatRainProb, '${tee.rainProb}%', t.sky),
           Container(width: 1, height: 40, color: t.line),
-          cell('바람', tee.windSpeed.toStringAsFixed(1), t.warn),
+          cell(context.l10n.homeStatWind, tee.windSpeed.toStringAsFixed(1),
+              t.warn),
         ],
       ),
     );
@@ -1167,7 +1186,7 @@ class _AiChip extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('AI 추천 · ${s.label}',
+                Text(context.l10n.homeAiRecommend(s.label),
                     style: TextStyle(
                         color: s.color,
                         fontSize: 13,
@@ -1224,7 +1243,7 @@ class _WxUnavailable extends StatelessWidget {
         border: Border.all(color: t.cardBorder),
       ),
       child: Text(
-        '날씨 정보 준비 중 · 골프장명/좌표 확인 필요',
+        context.l10n.homeWxPreparing,
         style: TextStyle(
           color: t.fg3,
           fontSize: 13,
@@ -1324,7 +1343,7 @@ class _GolfRowCardState extends State<_GolfRowCard> {
             if (widget.onDelete != null) ...[
               const SizedBox(width: 4),
               IconButton(
-                tooltip: '일정 삭제',
+                tooltip: context.l10n.homeDeleteSchedule,
                 icon: Icon(Icons.delete_outline, color: t.fg3),
                 onPressed: widget.onDelete,
               ),
@@ -1417,8 +1436,7 @@ class _SectionLabel extends StatelessWidget {
 
 class _EmptyView extends StatelessWidget {
   final IconData icon;
-  final String activity;
-  const _EmptyView({required this.icon, required this.activity});
+  const _EmptyView({required this.icon});
   @override
   Widget build(BuildContext context) {
     final t = GwTheme.of(context);
@@ -1439,12 +1457,12 @@ class _EmptyView extends StatelessWidget {
               child: Icon(icon, color: t.fg2, size: 34),
             ),
             const SizedBox(height: 16),
-            Text('등록된 $activity 일정이 없습니다',
+            Text(context.l10n.homeEmptyTitle,
                 style: TextStyle(
                     color: t.fg, fontSize: 18, fontWeight: FontWeight.w700),
                 textAlign: TextAlign.center),
             const SizedBox(height: 8),
-            Text('캘린더에 $activity 일정을 추가하면\n자동으로 날씨를 확인해드립니다',
+            Text(context.l10n.homeEmptyBody,
                 style: TextStyle(color: t.fg3, fontSize: 14),
                 textAlign: TextAlign.center),
           ],
@@ -1481,7 +1499,7 @@ class _ScheduleScreen extends ConsumerWidget {
           child: Row(
             children: [
               Expanded(
-                child: Text('일정',
+                child: Text(context.l10n.navSchedule,
                     style: TextStyle(
                         color: t.fg,
                         fontSize: 28,
@@ -1516,7 +1534,7 @@ class _ScheduleScreen extends ConsumerWidget {
                       Icon(Icons.event_available_outlined,
                           color: t.accent, size: 16),
                       const SizedBox(width: 6),
-                      Text('캘린더 가져오기',
+                      Text(context.l10n.homeImportCalendar,
                           style: TextStyle(
                               color: t.fg2,
                               fontSize: 12.5,
@@ -1570,9 +1588,9 @@ class _NextRoundCardState extends State<_NextRoundCard> {
     final f = (_wx?.forecast.isNotEmpty ?? false) ? _wx!.forecast.first : null;
 
     final sub = [
-      '${e.formattedDate} ${e.formattedTime} 티오프',
+      context.l10n.homeTeeOffAt(e.formattedDate, e.formattedTime),
       if (f != null) '${f.weatherLabel} ${f.temp.round()}°',
-      if (f != null) '강수 ${f.rainProb}%',
+      if (f != null) context.l10n.homeRainShort(f.rainProb),
     ].join(' · ');
 
     return GestureDetector(
@@ -1592,7 +1610,7 @@ class _NextRoundCardState extends State<_NextRoundCard> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('다음 라운드',
+                Text(context.l10n.homeNextRound,
                     style: TextStyle(
                         color: t.fg3,
                         fontSize: 12,
@@ -1648,12 +1666,12 @@ class _AllScheduleList extends ConsumerWidget {
 
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('일정을 삭제했습니다.')),
+        SnackBar(content: Text(context.l10n.homeScheduleDeleted)),
       );
     } catch (e) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('일정을 삭제하지 못했습니다: $e')),
+        SnackBar(content: Text(context.l10n.homeScheduleDeleteFailed('$e'))),
       );
     }
   }
@@ -1665,20 +1683,21 @@ class _AllScheduleList extends ConsumerWidget {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: t.surface,
-        title: Text('일정 삭제', style: TextStyle(color: t.fg)),
+        title: Text(context.l10n.homeDeleteSchedule,
+            style: TextStyle(color: t.fg)),
         content: Text(
-          '$courseName 일정을 삭제할까요?',
+          context.l10n.homeDeleteScheduleConfirm(courseName),
           style: TextStyle(color: t.fg2),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('취소'),
+            child: Text(context.l10n.commonCancel),
           ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: t.danger),
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('삭제'),
+            child: Text(context.l10n.commonDelete),
           ),
         ],
       ),
@@ -1726,12 +1745,11 @@ class _AllScheduleList extends ConsumerWidget {
     return golf.when(
       loading: () =>
           Center(child: CircularProgressIndicator(color: t.accent)),
-      error: (e, _) => _ErrorView('일정 로드 오류: $e'),
+      error: (e, _) => _ErrorView(context.l10n.homeScheduleLoadError('$e')),
       data: (golfEvents) {
         if (golfEvents.isEmpty) {
           return const _EmptyView(
             icon: Icons.calendar_today_outlined,
-            activity: '골프',
           );
         }
 
@@ -1750,7 +1768,7 @@ class _AllScheduleList extends ConsumerWidget {
               _dismissible(context, ref, next, _NextRoundCard(event: next)),
               if (rest.isNotEmpty) ...[
                 const SizedBox(height: 22),
-                _SectionLabel('다가오는 라운드 · ${rest.length}'),
+                _SectionLabel(context.l10n.homeUpcomingRounds(rest.length)),
                 const SizedBox(height: 11),
                 ...rest.map(
                   (event) => _dismissible(
@@ -1861,7 +1879,7 @@ class _MapScreenState extends ConsumerState<_MapScreen> {
             CircularProgressIndicator(color: t.accent),
             const SizedBox(height: 14),
             Text(
-              '$label 지도 불러오는 중',
+              context.l10n.homeMapLoading(label),
               style: TextStyle(
                 color: t.fg2,
                 fontSize: 13,
@@ -1984,12 +2002,11 @@ class _MapScreenState extends ConsumerState<_MapScreen> {
     return async.when(
       loading: () =>
           Center(child: CircularProgressIndicator(color: t.accent)),
-      error: (e, _) => _ErrorView('지도 로드 오류: $e'),
+      error: (e, _) => _ErrorView(context.l10n.homeMapLoadError('$e')),
       data: (events) {
         if (events.isEmpty) {
           return const _EmptyView(
             icon: Icons.map_outlined,
-            activity: '골프',
           );
         }
 
@@ -2015,7 +2032,7 @@ class _MapScreenState extends ConsumerState<_MapScreen> {
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 14, 24, 16),
-              child: Text('지도',
+              child: Text(context.l10n.navMap,
                   style: TextStyle(
                       color: t.fg,
                       fontSize: 28,
@@ -2243,7 +2260,7 @@ class _MapMissingLocation extends StatelessWidget {
                   textAlign: TextAlign.center),
               const SizedBox(height: 8),
               Text(
-                '지도에 표시할 좌표가 없습니다.\n일정 수정에서 주소를 입력하면 위치를 표시할 수 있습니다.',
+                context.l10n.homeMapNoCoords,
                 style: TextStyle(color: t.fg3, fontSize: 13),
                 textAlign: TextAlign.center,
               ),
