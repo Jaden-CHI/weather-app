@@ -14,6 +14,8 @@ from typing import Any
 import httpx
 import redis.asyncio as aioredis
 
+from services.kma_api import KmaApiError, fetch_items
+
 
 KST = timezone(timedelta(hours=9))
 
@@ -97,18 +99,20 @@ async def _fetch_kma_forecast(
     now = _now_kst()
     base_date, base_time = _latest_base_time(now)
 
-    url = "http://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getVilageFcst"
-    params = {
-        "serviceKey": api_key,
-        "pageNo": 1, "numOfRows": 1000,
-        "dataType": "JSON",
-        "base_date": base_date,
-        "base_time": base_time,
-        "nx": nx, "ny": ny,
-    }
-    resp = await client.get(url, params=params, timeout=10.0)
-    resp.raise_for_status()
-    items = resp.json()["response"]["body"]["items"]["item"]
+    items = await fetch_items(
+        client,
+        "VilageFcstInfoService_2.0/getVilageFcst",
+        api_key,
+        {
+            "pageNo": 1, "numOfRows": 1000,
+            "dataType": "JSON",
+            "base_date": base_date,
+            "base_time": base_time,
+            "nx": nx, "ny": ny,
+        },
+    )
+    if not items:
+        raise KmaApiError("기상청 단기예보 응답에 예보 항목이 없습니다")
 
     timeline: dict[str, dict] = {}
     cat_map = {
