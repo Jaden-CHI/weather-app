@@ -8,11 +8,19 @@ import json
 import math
 import os
 import random
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import httpx
 import redis.asyncio as aioredis
+
+
+KST = timezone(timedelta(hours=9))
+
+
+def _now_kst() -> datetime:
+    """서버 시간대(UTC)와 무관한 한국 현재 시각 (기존 포맷 유지를 위해 naive)."""
+    return datetime.now(KST).replace(tzinfo=None)
 
 
 # ── 기상청 LCC 격자 변환 ────────────────────────────────────────
@@ -86,7 +94,7 @@ def _make_mock_forecast(base_date: str, hours: int = 72) -> list[dict]:
 async def _fetch_kma_forecast(
     nx: int, ny: int, api_key: str, client: httpx.AsyncClient
 ) -> list[dict]:
-    now = datetime.now()
+    now = _now_kst()
     base_date, base_time = _latest_base_time(now)
 
     url = "http://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getVilageFcst"
@@ -163,7 +171,7 @@ async def _cache_weather(
 ) -> None:
     cache_key = f"weather:grid:{grid_x}:{grid_y}"
     payload = {
-        "updated_at": datetime.now().isoformat(),
+        "updated_at": datetime.now(KST).isoformat(),
         "source": source,
         "kma_forecast": kma_data,
         "open_meteo_hourly": open_meteo_data,
@@ -185,7 +193,7 @@ async def collect_course_weather(
 
     try:
         if use_mock:
-            kma_data = _make_mock_forecast(datetime.now().strftime("%Y%m%d"))
+            kma_data = _make_mock_forecast(_now_kst().strftime("%Y%m%d"))
             open_meteo_data = []
             source = "MOCK"
         else:
