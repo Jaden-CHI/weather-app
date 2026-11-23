@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.database import get_db, get_fishing_spot, search_fishing_spots
 from services.ai_advisor import get_marine_recommendation
+from services.khoa_api import cached_tide_view
 
 router = APIRouter(prefix="/api/v1/marine", tags=["marine"])
 
@@ -58,8 +59,9 @@ async def get_spot_weather(spot_id: str, db: AsyncSession = Depends(get_db)):
 
     data = json.loads(cached)
     marine = data.get("marine", {})
-    tides = data.get("tides", [])
-    golden_time = data.get("golden_time", "정보 없음")
+    tide_view = cached_tide_view(data)
+    tides = tide_view["tides"]
+    golden_time = tide_view["golden_time"]
 
     use_mock = os.getenv("USE_MOCK_DATA", "true").lower() == "true"
     recommendation = await get_marine_recommendation(
@@ -81,6 +83,8 @@ async def get_spot_weather(spot_id: str, db: AsyncSession = Depends(get_db)):
         # 조석
         "tides": tides,
         "golden_time": golden_time,
+        "tide_status": tide_view["tide_status"],
+        "tide_station": tide_view["tide_station"],
         # AI 권고
         "ai_recommendation": recommendation,
         # 안전 안내 (고정 콘텐츠)
