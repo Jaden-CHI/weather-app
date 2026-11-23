@@ -1,3 +1,7 @@
+import 'package:intl/intl.dart';
+
+import '../l10n/l10n.dart';
+
 /// 캘린더에서 파싱된 골프 일정
 class GolfEvent {
   final String id;
@@ -97,8 +101,13 @@ class FishingEvent {
 }
 
 String _formatKoreanDate(DateTime date) {
-  const weekdays = ['월', '화', '수', '목', '금', '토', '일'];
-  return '${date.month}/${date.day}(${weekdays[date.weekday - 1]})';
+  final l10n = L10n.current;
+  try {
+    return DateFormat(l10n.evtDateFmt, l10n.localeName).format(date);
+  } catch (_) {
+    // 로케일 심볼 미초기화(백그라운드 isolate 등) 시 기본 로케일로 폴백
+    return DateFormat(l10n.evtDateFmt).format(date);
+  }
 }
 
 String _formatTime(DateTime date) {

@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Golf Windy</string>
-    <string name="widget_description">골프 날씨 위젯</string>
+    <string name="widget_description">Golf weather widget</string>
+    <string name="widget_empty_message">Open the app to add a round</string>
+    <string name="widget_tap_open">Tap to open Golf Windy</string>
 </resources>

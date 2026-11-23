@@ -1,3 +1,4 @@
+import '../l10n/l10n.dart';
 import 'golf_event.dart';
 
 enum FairwayResult {
@@ -6,9 +7,9 @@ enum FairwayResult {
   notApplicable;
 
   String get label => switch (this) {
-        FairwayResult.hit => '성공',
-        FairwayResult.miss => '실패',
-        FairwayResult.notApplicable => '해당 없음',
+        FairwayResult.hit => L10n.current.scoreFairwayHit,
+        FairwayResult.miss => L10n.current.scoreFairwayMiss,
+        FairwayResult.notApplicable => L10n.current.scoreFairwayNotApplicable,
       };
 
   static FairwayResult fromName(String? value) {
@@ -216,17 +217,20 @@ class GolfRoundScore {
   }
 
   String get trackingStageLabel => switch (trackingStage) {
-        GolfRoundTrackingStage.complete => '세부 기록 완료',
-        GolfRoundTrackingStage.scoreOnly => '스코어 저장',
-        GolfRoundTrackingStage.nearlyComplete => '세부 기록 거의 완료',
-        GolfRoundTrackingStage.inProgress => '세부 기록 일부',
+        GolfRoundTrackingStage.complete => L10n.current.scoreStageComplete,
+        GolfRoundTrackingStage.scoreOnly => L10n.current.scoreStageScoreOnly,
+        GolfRoundTrackingStage.nearlyComplete =>
+          L10n.current.scoreStageNearlyComplete,
+        GolfRoundTrackingStage.inProgress => L10n.current.scoreStageInProgress,
       };
   String get trackingStageDescription => switch (trackingStage) {
-        GolfRoundTrackingStage.complete => '퍼트와 페어웨이까지 모두 기록했어요.',
-        GolfRoundTrackingStage.scoreOnly => '스코어는 저장됐고 세부 기록은 비어 있어요.',
+        GolfRoundTrackingStage.complete => L10n.current.scoreStageDescComplete,
+        GolfRoundTrackingStage.scoreOnly =>
+          L10n.current.scoreStageDescScoreOnly,
         GolfRoundTrackingStage.nearlyComplete =>
-          '세부 기록이 거의 끝났어요. 몇 홀만 더 확인하면 됩니다.',
-        GolfRoundTrackingStage.inProgress => '세부 기록을 이어서 보정할 수 있어요.',
+          L10n.current.scoreStageDescNearlyComplete,
+        GolfRoundTrackingStage.inProgress =>
+          L10n.current.scoreStageDescInProgress,
       };
 
   String get overParLabel {

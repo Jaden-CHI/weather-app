@@ -6,6 +6,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
+import '../l10n/l10n.dart';
 import 'weather_api_service.dart';
 
 /// 백그라운드 메시지 핸들러 (최상위 함수 필수)
@@ -32,10 +33,10 @@ class NotificationService {
     // Android 알림 채널
     await _localNotif.resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin>()
-        ?.createNotificationChannel(const AndroidNotificationChannel(
+        ?.createNotificationChannel(AndroidNotificationChannel(
           'weather_alert',
-          '날씨 알림',
-          description: '골프·낚시 일정 기상 변화 알림',
+          L10n.current.notifChannelName,
+          description: L10n.current.notifChannelDesc,
           importance: Importance.high,
         ));
 
@@ -133,7 +134,7 @@ class NotificationService {
       NotificationDetails(
         android: AndroidNotificationDetails(
           'weather_alert',
-          '날씨 알림',
+          L10n.current.notifChannelName,
           importance: Importance.high,
           priority: Priority.high,
           color: Color(color),

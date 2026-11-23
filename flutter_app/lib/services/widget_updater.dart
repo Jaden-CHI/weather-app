@@ -46,10 +46,30 @@ class WidgetUpdater {
 
   /// 데이터 없을 때 위젯 초기화 상태 표시
   static Future<void> showNoEventWidget() async {
+    await showUnavailableWidget(message: '앱을 열어 라운드를 등록해 주세요');
+  }
+
+  /// 날씨가 없어도 일정은 유지하고 이전 라운드의 값은 모두 지운다.
+  static Future<void> showUnavailableWidget({
+    GolfEvent? event,
+    required String message,
+  }) async {
     await Future.wait([
-      HomeWidget.saveWidgetData('status', 'NONE'),
-      HomeWidget.saveWidgetData('status_message', '예정된 야외 일정 없음'),
-      HomeWidget.saveWidgetData('dday_label', ''),
+      HomeWidget.saveWidgetData('status', event == null ? 'NONE' : 'UNKNOWN'),
+      HomeWidget.saveWidgetData('status_message', message),
+      HomeWidget.saveWidgetData('dday_label', event?.ddayLabel ?? ''),
+      HomeWidget.saveWidgetData('course_name', event?.courseName ?? event?.title ?? 'Golf Windy'),
+      HomeWidget.saveWidgetData('forecast_date', event?.formattedDate ?? ''),
+      HomeWidget.saveWidgetData('temp', ''),
+      HomeWidget.saveWidgetData('rain_prob', ''),
+      HomeWidget.saveWidgetData('wind_speed', ''),
+      HomeWidget.saveWidgetData('cancel_message', ''),
+      HomeWidget.saveWidgetData('cancel_urgency', 'NORMAL'),
+      HomeWidget.saveWidgetData('can_cancel_free', 'null'),
+      HomeWidget.saveWidgetData('wave_height', ''),
+      HomeWidget.saveWidgetData('golden_time', ''),
+      HomeWidget.saveWidgetData('departure_blocked', 'false'),
+      HomeWidget.saveWidgetData('last_updated', ''),
     ]);
     await _triggerUpdate();
   }

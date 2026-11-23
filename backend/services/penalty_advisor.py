@@ -1,29 +1,36 @@
 """골프장 취소 정책 + 페널티 안내 서비스"""
 
 from datetime import datetime, timedelta
-from typing import Any
+from math import isfinite
+from services.forecast_safety import KST
 
 
-def get_penalty_advice(policy: dict, round_datetime: datetime) -> dict:
-    """현재 시각 기준으로 무료 취소 가능 여부 + 카운트다운 반환"""
-    if not policy:
-        return {"available": False, "message": "취소 정책 정보 없음"}
-
-    now = datetime.now()
+def get_penalty_advice(policy: dict, round_datetime, *, verified=False, now=None) -> dict:
+    """Only calculate from verified rules and an exact, timezone-aware tee time."""
+    unknown = {
+        "available": False,
+        "verified": False,
+        "can_cancel_free": None,
+        "countdown": None,
+        "deadline_str": None,
+        "urgency": "NORMAL",
+        "message": "취소 규정은 예약처에 확인해 주세요",
+        "same_day_penalty": "",
+        "noshow_penalty": "",
+        "rain_cancel": {"available": False, "condition": "", "refund_rule": ""},
+    }
+    if not verified or not policy:
+        return unknown
     free_hours = policy.get("free_cancel_hours")
-
-    if free_hours is None:
-        return {
-            "can_cancel_free": None,
-            "policy_summary": policy.get("free_cancel_desc", "정책 정보를 확인하세요"),
-            "same_day_penalty": policy.get("same_day_penalty", ""),
-            "noshow_penalty": policy.get("noshow_penalty", ""),
-            "rain_cancel": {
-                "available": policy.get("rain_cancel_available", False),
-                "condition": policy.get("rain_cancel_condition", ""),
-                "refund_rule": policy.get("rain_refund_rule", ""),
-            },
-        }
+    if (round_datetime is None or round_datetime.tzinfo is None
+            or isinstance(free_hours, bool)
+            or not isinstance(free_hours, (int, float))
+            or not isfinite(free_hours) or not 0 <= free_hours <= 8760):
+        return unknown
+    now = now or datetime.now(KST)
+    if now.tzinfo is None:
+        now = now.replace(tzinfo=KST)
+    round_datetime = round_datetime.astimezone(KST)
 
     deadline = round_datetime - timedelta(hours=free_hours)
     time_left = deadline - now
@@ -49,6 +56,8 @@ def get_penalty_advice(policy: dict, round_datetime: datetime) -> dict:
         }
 
     result.update({
+        "verified": True,
+        "available": True,
         "same_day_penalty": policy.get("same_day_penalty", ""),
         "noshow_penalty": policy.get("noshow_penalty", ""),
         "rain_cancel": {

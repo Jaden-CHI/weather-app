@@ -1,0 +1,1008 @@
+{
+  "@@locale": "ko",
+  "appTitle": "Golf Windy",
+  "commonConfirm": "확인",
+  "commonCancel": "취소",
+  "commonSave": "저장",
+  "commonDelete": "삭제",
+  "commonEdit": "수정",
+  "commonClose": "닫기",
+  "commonRetry": "다시 시도",
+  "commonSearch": "검색",
+  "commonLoading": "불러오는 중…",
+  "commonError": "오류가 발생했어요",
+  "commonNone": "없음",
+  "commonDone": "완료",
+  "commonNext": "다음",
+  "commonSkip": "건너뛰기",
+  "commonStart": "시작하기",
+  "navHome": "홈",
+  "navSchedule": "일정",
+  "navMap": "지도",
+  "navSettings": "설정",
+  "setTitle": "설정",
+  "setSectionTheme": "테마 · THEME",
+  "setSectionThresholds": "알림 임계값",
+  "setRainThresholdLabel": "강수 확률 기준",
+  "setWindThresholdLabel": "풍속 기준",
+  "setThresholdHint": "이 임계값 초과 시 YELLOW/RED 권고가 발령됩니다",
+  "setSectionRoundProfile": "라운드 성향",
+  "setSensitivityRain": "비 민감도",
+  "setSensitivityWind": "바람 민감도",
+  "setSensitivityCold": "추위 민감도",
+  "setSensitivityHeat": "더위 민감도",
+  "setSensitivityHint": "민감도가 높을수록 라운드 적합도가 더 보수적으로 판정됩니다",
+  "setSectionNotifyTiming": "알림 타이밍",
+  "setNotifyTimingQuestion": "일정 몇 시간 전부터 알림을 받을까요?",
+  "setHoursBefore": "{h}시간 전",
+  "@setHoursBefore": {
+    "placeholders": {
+      "h": {
+        "type": "int"
+      }
+    }
+  },
+  "setSectionNotifyPermission": "알림 권한",
+  "setNotifyPermissionButton": "알림 권한 요청 / 재등록",
+  "setNotifyGranted": "알림 권한이 허용되었습니다.",
+  "setNotifyDenied": "알림 권한이 거부되었습니다.",
+  "setSectionHelp": "도움말",
+  "setHelpDesc": "핵심 기능 안내를 다시 열 수 있습니다.",
+  "setHelpTutorialButton": "튜토리얼 다시 보기",
+  "setSectionScore": "스코어",
+  "setScoreDesc": "OCR 스캔과 지난 라운드 기록 관리를 여기서 바로 열 수 있습니다.",
+  "setScoreOpenButton": "스코어 관리 열기",
+  "setSectionDevice": "디바이스 정보",
+  "setDeviceTokenLabel": "익명 디바이스 토큰",
+  "setDeviceTokenLoading": "로딩 중...",
+  "setDevicePrivacyNote": "이 앱은 개인정보를 수집하지 않습니다. 위 토큰은 알림 발송에만 사용되는 임의 식별자입니다.",
+  "setLanguageSection": "언어",
+  "setLanguageTitle": "앱 언어",
+  "setLanguageSystem": "시스템 설정 따름",
+  "setLanguageKorean": "한국어",
+  "setLanguageEnglish": "English",
+  "whatsNewTitle": "업데이트 안내",
+  "whatsNewSubtitle": "v{version}의 새로운 기능이에요.",
+  "@whatsNewSubtitle": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "suitRed": "D-{dday} 취소 권고 — {label} 주의보",
+  "@suitRed": {
+    "placeholders": {
+      "dday": {
+        "type": "int"
+      },
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "suitYellow": "D-{dday} 주의 — {label} 준비",
+  "@suitYellow": {
+    "placeholders": {
+      "dday": {
+        "type": "int"
+      },
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "suitGreen": "D-{dday} 라운딩 적합",
+  "@suitGreen": {
+    "placeholders": {
+      "dday": {
+        "type": "int"
+      }
+    }
+  },
+  "suitWorstRain": "악천후",
+  "suitWorstWind": "강풍",
+  "suitWorstCold": "한파",
+  "suitWorstHeat": "폭염",
+  "suitPrepRain": "우비",
+  "suitPrepWind": "방풍",
+  "suitPrepCold": "방한",
+  "suitPrepHeat": "더위 대비",
+  "suitDetailRainProb": "강수확률 {p}%",
+  "@suitDetailRainProb": {
+    "placeholders": {
+      "p": {
+        "type": "int"
+      }
+    }
+  },
+  "suitDetailWind": "풍속 {w}m/s",
+  "@suitDetailWind": {
+    "placeholders": {
+      "w": {
+        "type": "String"
+      }
+    }
+  },
+  "suitDetailMinTemp": "최저 {t}°C",
+  "@suitDetailMinTemp": {
+    "placeholders": {
+      "t": {
+        "type": "int"
+      }
+    }
+  },
+  "suitDetailMaxTemp": "최고 {t}°C",
+  "@suitDetailMaxTemp": {
+    "placeholders": {
+      "t": {
+        "type": "int"
+      }
+    }
+  },
+  "suitDetailLightning": "낙뢰 예보",
+  "suitDetailProfileApplied": " — 내 라운드 성향 반영 판정",
+  "weatherPendingMessage": "날씨 정보가 아직 준비 중입니다.\n골프장 DB에는 등록되어 있지만 해당 위치의 예보 캐시가 아직 수집되지 않았거나, 좌표 보정이 필요할 수 있어요. 잠시 후 다시 확인하거나 일정의 골프장명을 수정해 주세요.",
+  "weatherUnavailableMessage": "날씨 정보를 불러오지 못했습니다.\n네트워크 연결 또는 서버 상태를 확인해 주세요. 실기기 테스트 중이라면 설정의 API 주소가 배포 서버를 가리키는지도 확인하면 좋습니다.\n현재 주소: {url}",
+  "@weatherUnavailableMessage": {
+    "placeholders": {
+      "url": {
+        "type": "String"
+      }
+    }
+  },
+  "splashTagline": "스마트한 라운드 관리",
+  "mapCourseLocation": "골프장 위치",
+  "themeSubtitleFairwaySky": "쿨 틸 · 다크",
+  "themeSubtitleLightAir": "오프화이트 · 라이트",
+  "themeSubtitleMidnightLime": "네이비 + 라임 · 다크",
+  "notifChannelName": "날씨 알림",
+  "notifChannelDesc": "골프·낚시 일정 기상 변화 알림",
+  "sensitivityLow": "둔감",
+  "sensitivityNormal": "보통",
+  "sensitivityHigh": "민감",
+  "homeStatusGreen": "최적",
+  "homeStatusYellow": "주의",
+  "homeStatusRed": "취소권장",
+  "homeStatusNone": "정보없음",
+  "tutTitle": "Golf Windy 빠른 안내",
+  "tutSubtitle": "핵심 기능만 짧게 보고 바로 시작할게요.",
+  "tutStep1Title": "홈에서 바로 확인",
+  "tutStep1Desc": "다가오는 라운드와 날씨 권고를 첫 화면에서 바로 볼 수 있어요.",
+  "tutStep1Bullet1": "GREEN / YELLOW / RED 권고를 빠르게 확인",
+  "tutStep1Bullet2": "아래로 당겨 최신 예보 다시 불러오기",
+  "tutStep2Title": "일정 등록은 간단하게",
+  "tutStep2Desc": "일정 탭에서 골프장을 선택하고 티오프 시간을 저장하면 준비가 끝납니다.",
+  "tutStep2Bullet1": "골프장 검색 후 일정 생성",
+  "tutStep2Bullet2": "일정 상세에서 날씨와 스코어카드 연결",
+  "tutStep3Title": "지도와 맛집 확인",
+  "tutStep3Desc": "지도 탭에서 선택한 골프장 위치와 근처 식당을 함께 확인할 수 있어요.",
+  "tutStep3Bullet1": "네이버 지도에서 골프장 위치 확인",
+  "tutStep3Bullet2": "조식/중식 추천 위치를 주변 기준으로 탐색",
+  "tutStep4Title": "OCR로 지난 라운드도 저장",
+  "tutStep4Desc": "스코어 관리에서 사진만 선택하면 지난 라운드 기록을 빠르게 남길 수 있어요.",
+  "tutStep4Bullet1": "일정 상세 또는 스코어 관리에서 OCR 시작",
+  "tutStep4Bullet2": "설정에서 언제든 튜토리얼 다시 보기 가능",
+  "tutPrev": "이전",
+  "tutFooter": "튜토리얼은 설정 탭에서 언제든 다시 볼 수 있어요.",
+  "homeCalendarError": "캘린더 오류: {error}",
+  "@homeCalendarError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "homeEmptyTitle": "등록된 골프 일정이 없습니다",
+  "homeEmptyBody": "캘린더에 골프 일정을 추가하면\n자동으로 날씨를 확인해드립니다",
+  "homeUpcomingRounds": "다가오는 라운드 · {count}",
+  "@homeUpcomingRounds": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "homeNextRoundDday": "다음 라운드 · D-DAY",
+  "homeNextRoundDdayN": "다음 라운드 · D-{n}",
+  "@homeNextRoundDdayN": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "homeTeeOffAt": "{date} {time} 티오프",
+  "@homeTeeOffAt": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      },
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "homeFeelsLikeInline": " · 체감 {temp}°",
+  "@homeFeelsLikeInline": {
+    "placeholders": {
+      "temp": {
+        "type": "int"
+      }
+    }
+  },
+  "homeTeeOffForecast": "티오프 시간대 예보",
+  "homeForecastNotYet": "아직 예보 제공 전 · 라운드 7일 전부터 확인하세요",
+  "homeAlertSevere": "악천후 — 취소 권고",
+  "homeAlertCaution": "기상 주의",
+  "homeStatFeelsLike": "체감온도",
+  "homeStatRainProb": "강수확률",
+  "homeStatWind": "바람",
+  "homeAiRecommend": "AI 추천 · {label}",
+  "@homeAiRecommend": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "homeWxPreparing": "날씨 정보 준비 중 · 골프장명/좌표 확인 필요",
+  "homeDeleteSchedule": "일정 삭제",
+  "homeDeleteScheduleConfirm": "{name} 일정을 삭제할까요?",
+  "@homeDeleteScheduleConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "homeScheduleDeleted": "일정을 삭제했습니다.",
+  "homeScheduleDeleteFailed": "일정을 삭제하지 못했습니다: {error}",
+  "@homeScheduleDeleteFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "homeScheduleLoadError": "일정 로드 오류: {error}",
+  "@homeScheduleLoadError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "homeImportCalendar": "캘린더 가져오기",
+  "homeNextRound": "다음 라운드",
+  "homeRainShort": "강수 {prob}%",
+  "@homeRainShort": {
+    "placeholders": {
+      "prob": {
+        "type": "int"
+      }
+    }
+  },
+  "homeMapLoadError": "지도 로드 오류: {error}",
+  "@homeMapLoadError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "homeMapLoading": "{name} 지도 불러오는 중",
+  "@homeMapLoading": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "homeMapNoCoords": "지도에 표시할 좌표가 없습니다.\n일정 수정에서 주소를 입력하면 위치를 표시할 수 있습니다.",
+  "wxPolicyUnverified": "취소 규정은 예약처에 확인해 주세요",
+  "wxTimeLabel": "{h}시",
+  "@wxTimeLabel": {
+    "placeholders": {
+      "h": {
+        "type": "String"
+      }
+    }
+  },
+  "wxTimeLabelUnknown": "--시",
+  "wxRainHeavy": "강한 비",
+  "wxRainLight": "약한 비",
+  "wxRainDrizzle": "한두 방울",
+  "wxClear": "맑음",
+  "wxNoInfo": "정보 없음",
+  "wxBoardingReport": "승선신고",
+  "evtDateFmt": "M/d(E)",
+  "shareGolfWeatherHeader": "⛳ Golf Windy — 라운드 날씨 공유",
+  "shareAiSection": "[ AI 권고 ]",
+  "shareForecastSection": "[ 시간대별 예보 ]",
+  "shareForecastLine": "{time}  {emoji}  {temp}°  강수 {rain}%  바람 {wind}m/s",
+  "@shareForecastLine": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      },
+      "emoji": {
+        "type": "String"
+      },
+      "temp": {
+        "type": "int"
+      },
+      "rain": {
+        "type": "int"
+      },
+      "wind": {
+        "type": "String"
+      }
+    }
+  },
+  "shareCancelSection": "[ 취소 안내 ]",
+  "shareRainCancelPolicy": "🌧️ 우천 특별 정책: {condition}",
+  "@shareRainCancelPolicy": {
+    "placeholders": {
+      "condition": {
+        "type": "String"
+      }
+    }
+  },
+  "shareFooter": "Golf Windy에서 라운드 일정과 날씨를 확인하세요.",
+  "shareWeatherSubject": "{course} 날씨 — {message}",
+  "@shareWeatherSubject": {
+    "placeholders": {
+      "course": {
+        "type": "String"
+      },
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "shareScheduleHeader": "⛳ Golf Windy — 라운드 일정 공유",
+  "shareWeatherPending": "날씨 정보는 아직 준비 중입니다. Golf Windy에서 라운드 전 날씨와 취소 권고를 다시 확인해 주세요.",
+  "shareScheduleSubject": "{course} 라운드 일정",
+  "@shareScheduleSubject": {
+    "placeholders": {
+      "course": {
+        "type": "String"
+      }
+    }
+  },
+  "shareDateFmt": "M월 d일(E) HH:mm",
+  "widgetNoSchedule": "앱을 열어 라운드를 등록해 주세요",
+  "widgetForecastNotReady": "아직 예보 제공 전 · 라운드 7일 전부터 확인하세요",
+  "widgetChecking": "날씨 확인 중 · 눌러서 앱 열기",
+  "widgetWeatherFailed": "날씨를 확인하지 못했습니다 · 앱에서 다시 확인",
+  "widgetInfoFailed": "정보를 확인하지 못했습니다 · 앱에서 다시 확인",
+  "ocrTitle": "스코어카드 OCR",
+  "ocrCameraAccessFailed": "카메라 접근에 실패했습니다. 아래 \"앱 설정\"을 눌러 Golf Windy의 카메라 권한을 확인해 주세요.",
+  "ocrOpenAppSettings": "앱 설정",
+  "ocrGalleryOpenFailed": "사진 선택 화면을 열지 못했습니다. 앱을 완전히 종료한 뒤 다시 시도해 주세요.",
+  "ocrImageLoadFailed": "이미지를 불러오지 못했습니다: {error}",
+  "@ocrImageLoadFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "ocrRecognizeFailed": "OCR 인식에 실패했습니다: {error}",
+  "@ocrRecognizeFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "ocrCameraPermissionOff": "카메라 권한이 꺼져 있어 OCR 촬영을 시작할 수 없습니다. 아래 \"앱 설정\"을 눌러 Golf Windy의 카메라 권한을 허용해 주세요.",
+  "ocrCameraPermissionNeeded": "카메라 권한이 필요합니다. 권한을 허용한 뒤 다시 시도해 주세요.",
+  "ocrNoCompanionsToReview": "검토가 필요한 동반자 이름이 없습니다.",
+  "ocrReviewAllDone": "좋아요, 검토가 필요한 동반자 이름을 모두 확인했어요.",
+  "ocrReviewProgress": "검토를 {reviewed}명 진행했고, 아직 {remaining}명 남아 있습니다.",
+  "@ocrReviewProgress": {
+    "placeholders": {
+      "reviewed": {
+        "type": "int"
+      },
+      "remaining": {
+        "type": "int"
+      }
+    }
+  },
+  "ocrApplyToScorecard": "현재 스코어카드에 적용",
+  "ocrScanCardTitle": "스코어카드 이미지 스캔",
+  "ocrScanCardDesc": "사진 속 숫자를 읽어 홀별 타수 후보를 만듭니다. 인식 결과는 반드시 확인 후 적용하세요.",
+  "ocrPickPhoto": "사진 선택",
+  "ocrTakePhoto": "촬영",
+  "ocrSummaryTitle": "OCR 요약",
+  "ocrChipTotal": "총합",
+  "ocrFrontNine": "전반",
+  "ocrBackNine": "후반",
+  "ocrChipScoredCompanions": "점수 동반자",
+  "ocrChipNameOnly": "이름만 감지",
+  "ocrChipNameReview": "이름 검토",
+  "ocrChipNeeded": "필요",
+  "ocrStrokesValue": "{n}타",
+  "@ocrStrokesValue": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "ocrPeopleValue": "{n}명",
+  "@ocrPeopleValue": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "ocrLabelCourse": "골프장",
+  "ocrLabelRound": "라운드",
+  "ocrLabelPlayer": "본인",
+  "ocrSummaryEmptyHint": "사진을 선택하거나 촬영하면 OCR 결과가 여기에 정리됩니다. 읽은 뒤에만 현재 스코어카드에 적용할 수 있어요.",
+  "ocrSummaryChangedHint": "기본 스코어카드와 다른 홀 {n}개가 반영됐어요. 전반/후반 점수 흐름과 동반자 이름을 한 번만 더 확인하면 좋습니다.",
+  "@ocrSummaryChangedHint": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "ocrSummaryNoChangeHint": "기본 코스 정보와 큰 차이는 없어요. 그래도 손글씨 카드라면 합계와 동반자 이름은 한 번 확인해 주세요.",
+  "ocrMyScorePreview": "내 스코어 미리보기",
+  "ocrMyScorePreviewDesc": "전반/후반 흐름과 파 대비 결과를 보면서 이상한 홀을 바로 수정하세요.",
+  "ocrPuttsValue": "퍼트 {n}",
+  "@ocrPuttsValue": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "ocrPuttsNotTracked": "퍼트 미입력",
+  "ocrRawTextTitle": "원문 OCR",
+  "ocrRawTextCopied": "원문 OCR을 복사했어요.",
+  "ocrCopyRawText": "원문 복사",
+  "ocrCompanionCandidatesTitle": "감지된 동반자 후보",
+  "ocrCompanionCandidatesDesc": "적용하면 아직 없는 이름만 동반자 목록에 자동 추가됩니다. 점수까지 읽힌 동반자는 이름과 홀별 타수를 바로 수정할 수 있습니다.",
+  "ocrCompanionNamesNeedReview": "{n}명의 이름은 확인이 필요합니다.",
+  "@ocrCompanionNamesNeedReview": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "ocrReviewCompanionsInOrder": "검토 필요한 동반자 순서대로 보기",
+  "ocrScoredCompanionsTitle": "점수까지 감지된 동반자",
+  "ocrFlagNameCheck": "이름 확인",
+  "ocrFlagDuplicate": "중복 후보",
+  "ocrFrontBackTotals": "전반 {front} · 후반 {back}",
+  "@ocrFrontBackTotals": {
+    "placeholders": {
+      "front": {
+        "type": "int"
+      },
+      "back": {
+        "type": "int"
+      }
+    }
+  },
+  "ocrNameOnlyCandidatesTitle": "이름만 감지된 동반자 후보",
+  "ocrNameCheckChip": "{name} 확인",
+  "@ocrNameCheckChip": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "ocrHoleEditTitle": "{n}번 홀 보정",
+  "@ocrHoleEditTitle": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "ocrHoleEditDesc": "손글씨 카드나 흐릿한 숫자는 여기서 바로 수정하세요.",
+  "ocrLabelStrokes": "타수",
+  "ocrLabelPutts": "퍼트",
+  "ocrApplyFix": "보정 반영",
+  "ocrCompanionEditTitle": "동반자 OCR 보정",
+  "ocrLabelName": "이름",
+  "ocrCompanionNameHint": "동반자 이름",
+  "ocrNameTooShortWarning": "너무 짧거나 애매한 이름입니다. 추천 이름이나 원문 OCR을 함께 확인해 주세요.",
+  "ocrDuplicateNameWarning": "다른 동반자와 이름이 같습니다. 같은 분이 아니라면 이름을 구분해 주세요.",
+  "ocrFrequentNames": "자주 함께한 이름",
+  "ocrHighSimilarity": "유사도 높음",
+  "ocrRoundsValue": "{n}회",
+  "@ocrRoundsValue": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "ocrCurrentTotal": "현재 합계 {n}타",
+  "@ocrCurrentTotal": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "ocrApplyCompanionFix": "동반자 보정 반영",
+  "ocrHoleStrokesTitle": "홀별 타수",
+  "ocrCompanionHoleEditDesc": "동반자 홀을 눌러 타수를 수정하세요.",
+  "ocrCompanionHoleTitle": "{n}번 홀 동반자 타수",
+  "@ocrCompanionHoleTitle": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "ocrCompanionHoleDesc": "Par {par} 기준으로 타수를 보정합니다.",
+  "@ocrCompanionHoleDesc": {
+    "placeholders": {
+      "par": {
+        "type": "int"
+      }
+    }
+  },
+  "ocrApplyStrokes": "타수 반영",
+  "restTabBreakfast": "조식",
+  "restTabLunch": "중식",
+  "restFilterNoteWithAddress": "카페·디저트 제외 · {address} 기준 가까운 순 우선",
+  "@restFilterNoteWithAddress": {
+    "placeholders": {
+      "address": {
+        "type": "String"
+      }
+    }
+  },
+  "restFilterNote": "카페·디저트 제외 · 실제 후기는 상세에서 확인",
+  "restLoadError": "오류가 발생했습니다: {error}",
+  "@restLoadError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "restEmptyNearby": "근처에 추천 식당이 없습니다\n(위치: {lat}, {lng})",
+  "@restEmptyNearby": {
+    "placeholders": {
+      "lat": {
+        "type": "String"
+      },
+      "lng": {
+        "type": "String"
+      }
+    }
+  },
+  "restRatingLabel": "별점 {rating}",
+  "@restRatingLabel": {
+    "placeholders": {
+      "rating": {
+        "type": "String"
+      }
+    }
+  },
+  "restDistanceCategory": "{distance}km · {category}",
+  "@restDistanceCategory": {
+    "placeholders": {
+      "distance": {
+        "type": "String"
+      },
+      "category": {
+        "type": "String"
+      }
+    }
+  },
+  "restDirections": "길찾기",
+  "restViewDetails": "상세 보기",
+  "restAddressLabel": "주소",
+  "restHoursLabel": "영업시간",
+  "restCall": "전화",
+  "restViewReviews": "후기 보기",
+  "restRecommendationCriteria": "추천 기준",
+  "restNavKakaoTitle": "카카오맵으로 길찾기",
+  "restNavKakaoSubtitle": "설치되어 있으면 앱으로 열고, 없으면 웹으로 연결",
+  "restNavNaverTitle": "네이버 지도로 길찾기",
+  "restNavNaverSubtitle": "네이버 지도 앱이 있으면 바로 연결",
+  "restNavWebTitle": "웹 지도로 열기",
+  "restNavWebSubtitle": "지도 앱이 없어도 브라우저에서 확인",
+  "restNavOpenFailed": "길찾기를 열 수 없습니다. 잠시 후 다시 시도해 주세요.",
+  "restSearchError": "식당 검색 중 오류가 발생했습니다.\n{error}",
+  "@restSearchError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "restApiAuthError": "카카오 API 인증에 실패했습니다. 개발자 콘솔에서 REST API 키를 확인해 주세요.",
+  "restApiForbiddenError": "카카오 API 사용이 제한되었습니다. 앱 플랫폼(iOS) 등록 여부를 확인해 주세요.",
+  "restApiError": "식당 API 오류 ({statusCode})",
+  "@restApiError": {
+    "placeholders": {
+      "statusCode": {
+        "type": "int"
+      }
+    }
+  },
+  "restHoursPending": "정보 확인 필요",
+  "restHoursUnspecified": "미지정",
+  "restReviewHint1": "카카오 장소 페이지에서 방문 후기와 사진을 확인해 보세요.",
+  "restReviewHint2": "라운드 전후 식사에 맞는 음식점 카테고리만 선별했습니다.",
+  "schedEnterCourseName": "골프장을 입력해주세요",
+  "schedCourseNotInDb": "{name}는 DB에 없어 날씨 알림 없이 커스텀 일정으로 저장합니다",
+  "@schedCourseNotInDb": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "schedErrorWithDetail": "오류: {error}",
+  "@schedErrorWithDetail": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "schedCalendarPermissionNeeded": "캘린더 접근 권한이 필요합니다. 설정에서 캘린더 권한을 허용해 주세요.",
+  "schedNoCalendarCandidates": "최근/예정 캘린더에서 골프 일정 후보를 찾지 못했어요.",
+  "schedCalendarImportFailed": "캘린더 일정을 불러오지 못했어요: {error}",
+  "@schedCalendarImportFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "schedCalendarCandidatesTitle": "캘린더 일정 후보",
+  "schedCalendarCandidatesDesc": "가져올 일정을 선택하면 골프장, 날짜, 티오프 시간이 입력됩니다.",
+  "schedPortalFoundCourse": "포털 검색으로 찾은 골프장이에요 (DB 외) — 주소를 확인해 주세요.",
+  "schedVerifyCourseName": "골프장명은 저장 전 한 번 확인해 주세요.",
+  "schedCalendarApplied": "캘린더 일정 정보를 입력했습니다. 저장 전 확인해 주세요.",
+  "schedEditSchedule": "일정 수정",
+  "schedAddNewSchedule": "새 일정 추가",
+  "schedSaveSchedule": "일정 저장",
+  "schedIntro": "라운드 정보를 입력하면 골프장 날씨와 알림을 함께 확인할 수 있습니다.",
+  "schedDateLabel": "날짜 *",
+  "schedTimeLabel": "시간 *",
+  "schedCourseLabel": "골프장 *",
+  "schedAddressLabel": "주소/위치 메모",
+  "schedTitleLabel": "제목",
+  "schedNotifyLabel": "알림",
+  "schedCourseHint": "예: 레이크사이드CC",
+  "schedAddressHint": "예: 경기도 용인시 처인구 ...",
+  "schedTitleHint": "예: 주말 라운드",
+  "schedWeatherAlertToggle": "날씨 위험 알림 받기",
+  "schedCheckingCalendar": "캘린더 확인 중",
+  "schedImportFromCalendar": "캘린더에서 가져오기",
+  "schedHoursBefore": "{hours}시간 전",
+  "@schedHoursBefore": {
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      }
+    }
+  },
+  "schedDaysBefore": "{days}일 전",
+  "@schedDaysBefore": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "schedDateFmt": "M월 d일 (E)",
+  "schedCalendarDateFmt": "yyyy.MM.dd (E) HH:mm",
+  "eventStatusOptimal": "최적",
+  "eventStatusCaution": "주의",
+  "eventStatusCancelRecommended": "취소권장",
+  "eventStatusUnknown": "정보없음",
+  "eventDeleteTitle": "일정 삭제",
+  "eventDeleteConfirm": "이 일정을 삭제하시겠습니까?",
+  "eventErrorWithDetail": "오류: {error}",
+  "@eventErrorWithDetail": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "eventNotifPermissionNeeded": "알림 권한이 필요합니다. 설정에서 허용해주세요.",
+  "eventSubscribeNoCourse": "골프장 정보를 찾을 수 없어 구독할 수 없습니다.",
+  "eventSubscribeSuccess": "날씨 변화 알림을 등록했습니다.",
+  "eventSubscribeFailed": "알림 등록에 실패했습니다.",
+  "eventBookingForecastTitle": "부킹 시간대 예보",
+  "eventBookingTimeBase": "부킹 {time} 기준",
+  "@eventBookingTimeBase": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "eventStartMarker": "시작",
+  "eventRainProb": "비 {prob}%",
+  "@eventRainProb": {
+    "placeholders": {
+      "prob": {
+        "type": "int"
+      }
+    }
+  },
+  "eventRestaurantTitle": "근처 식당 추천",
+  "eventRestaurantSubtitle": "조식·중식 장소를 찾아보세요",
+  "eventForecastNotYet": "아직 예보 제공 전 · 라운드 7일 전부터 확인하세요",
+  "eventWeatherPendingTitle": "날씨 준비 중인 일정",
+  "eventWeatherPendingDesc": "골프장 매칭 또는 예보 캐시가 아직 준비되지 않았습니다. 일정, 지도, 식당 추천은 사용할 수 있고 날씨는 잠시 후 다시 확인해 주세요.",
+  "eventMapHint": "지도 표시가 안 되면 일정 수정에서 골프장명과 주소를 함께 입력해 주세요.",
+  "eventScorecardTitle": "스코어카드",
+  "eventScorecardSubtitle": "18홀 타수·퍼트·페어웨이 기록",
+  "calDefaultGolfTitle": "골프 일정",
+  "scoreHistoryTitle": "스코어 관리",
+  "scoreDeleteTitle": "스코어 삭제",
+  "scoreDeleteConfirm": "{courseName} 기록을 삭제할까요?",
+  "@scoreDeleteConfirm": {
+    "placeholders": {
+      "courseName": {
+        "type": "String"
+      }
+    }
+  },
+  "scoreDeletedSnack": "스코어 기록을 삭제했습니다.",
+  "scoreCourseNameUpdatedSnack": "골프장 이름을 수정했습니다.",
+  "scoreOcrScanning": "OCR 스캐닝",
+  "scoreRoundDate": "라운드 날짜",
+  "scoreToday": "오늘",
+  "scoreYesterday": "어제",
+  "scoreSevenDaysAgo": "7일 전",
+  "scoreOcrNoCourseNameHint": "골프장 이름은 먼저 입력하지 않아도 됩니다. 먼저 OCR로 읽고, 필요한 경우에만 마지막에 보정할게요.",
+  "scoreOcrStart": "OCR 스캔 시작",
+  "scoreRecentRounds": "최근 라운드",
+  "scoreLifeBest": "라이프베스트",
+  "scoreRecentAvgChip": "최근 5R 평균 {avg}",
+  "@scoreRecentAvgChip": {
+    "placeholders": {
+      "avg": {
+        "type": "String"
+      }
+    }
+  },
+  "scoreThisMonthChip": "이번 달 {count}R",
+  "@scoreThisMonthChip": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "scoreCompanionChip": "동반자 기록 {count}R",
+  "@scoreCompanionChip": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "scoreDetailCompleteChip": "세부 완료 {count}R",
+  "@scoreDetailCompleteChip": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "scoreOptionalFixChip": "선택 보정 {count}R",
+  "@scoreOptionalFixChip": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "scoreOptionalMetricsCount": "선택 세부 지표 {count}건",
+  "@scoreOptionalMetricsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "scoreDetailRecordPercent": "세부 기록 {percent}%",
+  "@scoreDetailRecordPercent": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "scoreOptionalInputHoles": "선택 입력 {count}홀",
+  "@scoreOptionalInputHoles": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "scorePuttsTrackedChip": "퍼트 {tracked}/{total}홀",
+  "@scorePuttsTrackedChip": {
+    "placeholders": {
+      "tracked": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "scoreFairwayTrackedChip": "페어웨이 {tracked}/{total}홀",
+  "@scoreFairwayTrackedChip": {
+    "placeholders": {
+      "tracked": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "scoreFirstIncompleteChip": "첫 선택 항목 {hole}H",
+  "@scoreFirstIncompleteChip": {
+    "placeholders": {
+      "hole": {
+        "type": "int"
+      }
+    }
+  },
+  "scoreTotalRounds": "총 라운드",
+  "scoreTimesCount": "{count}회",
+  "@scoreTimesCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "scoreRoundsThisYear": "올해 라운드",
+  "scoreThisMonth": "이번 달",
+  "scoreRecentAvgLabel": "최근 5R 평균",
+  "scoreCompanionRecords": "동반자 기록",
+  "scoreNotRecordedYet": "아직 기록 전",
+  "scoreCompanionSavedCaption": "동반자 정보가 함께 저장된 라운드",
+  "scoreOptionalFix": "선택 보정",
+  "scoreAllScoresSaved": "스코어 기록은 모두 저장됨",
+  "scoreOptionalDetailCaption": "퍼트/페어웨이 등 선택 세부 지표",
+  "scoreCompanionCountBadge": "동반자 {count}명",
+  "@scoreCompanionCountBadge": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "scorePuttRecordBadge": "퍼트 기록",
+  "scoreFairwayRecordBadge": "페어웨이 기록",
+  "scoreTrackingSummary": "선택 지표: 퍼트 {puttTracked}/{puttTotal}홀 · 페어웨이 {fairwayTracked}/{fairwayTotal}홀",
+  "@scoreTrackingSummary": {
+    "placeholders": {
+      "puttTracked": {
+        "type": "int"
+      },
+      "puttTotal": {
+        "type": "int"
+      },
+      "fairwayTracked": {
+        "type": "int"
+      },
+      "fairwayTotal": {
+        "type": "int"
+      }
+    }
+  },
+  "scoreEditCourseName": "골프장명 수정",
+  "scoreEditCourseNameDesc": "OCR로 저장된 골프장명이 비었거나 다르면 여기서 바로 고칠 수 있어요.",
+  "scoreCourseNameLabel": "골프장 이름",
+  "scoreCourseNameHint": "예: 드림파크CC",
+  "scoreOcrCardTitle": "스코어카드 OCR 스캔",
+  "scoreOcrCardDesc": "일정 상세의 스코어카드에서 사진을 읽어 적용",
+  "scoreOcrGuide": "OCR 가이드",
+  "scoreEmptyTitle": "아직 저장된 스코어가 없습니다",
+  "scoreEmptyDesc": "일정 상세 화면에서 스코어카드를 열고 저장하거나\n지난 라운드를 OCR로 바로 등록하면 기록이 여기에 쌓입니다.",
+  "scoreOcrSheetTitle": "스코어카드 OCR 가져오기",
+  "scoreOcrSheetDesc": "일정 상세에서 바로 스캔할 수도 있고, 지난 라운드도 OCR 등록으로 기록을 시작할 수 있습니다.",
+  "scoreOcrStep1": "스코어카드 화면을 캡처하거나 종이 스코어카드를 촬영",
+  "scoreOcrStep2": "일정 상세 스코어카드 또는 OCR 스캐닝에서 이미지 선택",
+  "scoreOcrStep3": "홀별 점수를 확인하면 자동 저장되고, 필요할 때만 보정",
+  "scoreOcrStartShort": "OCR 시작",
+  "scoreCompanionOne": "동반자 {name}",
+  "@scoreCompanionOne": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "scoreCompanionTwo": "동반자 {name1} · {name2}",
+  "@scoreCompanionTwo": {
+    "placeholders": {
+      "name1": {
+        "type": "String"
+      },
+      "name2": {
+        "type": "String"
+      }
+    }
+  },
+  "scoreCompanionMore": "동반자 {name1} · {name2} 외 {count}명",
+  "@scoreCompanionMore": {
+    "placeholders": {
+      "name1": {
+        "type": "String"
+      },
+      "name2": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "scoreCardSavedSnack": "스코어카드를 저장했습니다.",
+  "scoreSaveFailedSnack": "저장하지 못했습니다: {error}",
+  "@scoreSaveFailedSnack": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "scoreCourseNameConfirmTitle": "골프장 이름 확인",
+  "scoreCourseNameMissingDesc": "이번 카드에서는 골프장 이름을 읽지 못했어요. 저장 전에 골프장 이름만 입력해 주세요.",
+  "scoreContinueSave": "저장 계속",
+  "scoreOcrLoadedSnack": "OCR 결과를 불러왔어요. 홀별 점수만 한 번 확인해 주세요.",
+  "scoreOcrLoadedWithCompanionsSnack": "OCR 결과와 동반자 {count}명 기록을 불러왔어요.",
+  "@scoreOcrLoadedWithCompanionsSnack": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "scoreSaving": "저장 중",
+  "scoreSaveButton": "스코어 저장",
+  "scorePastRoundOcr": "지난 라운드 OCR",
+  "scoreCardLabel": "스코어카드",
+  "scoreCompanionOcrResult": "동반자 OCR 결과",
+  "scoreTotalStrokes": "총타",
+  "scoreScoreLabel": "스코어",
+  "scorePutts": "퍼트",
+  "scoreFairway": "페어웨이",
+  "scoreObPenalty": "OB/벌타",
+  "scoreStrokes": "타수",
+  "scorePenalty": "벌타",
+  "scoreFairwayHit": "성공",
+  "scoreFairwayMiss": "실패",
+  "scoreFairwayNotApplicable": "해당 없음",
+  "scoreStageComplete": "세부 기록 완료",
+  "scoreStageScoreOnly": "스코어 저장",
+  "scoreStageNearlyComplete": "세부 기록 거의 완료",
+  "scoreStageInProgress": "세부 기록 일부",
+  "scoreStageDescComplete": "퍼트와 페어웨이까지 모두 기록했어요.",
+  "scoreStageDescScoreOnly": "스코어는 저장됐고 세부 기록은 비어 있어요.",
+  "scoreStageDescNearlyComplete": "세부 기록이 거의 끝났어요. 몇 홀만 더 확인하면 됩니다.",
+  "scoreStageDescInProgress": "세부 기록을 이어서 보정할 수 있어요."
+}

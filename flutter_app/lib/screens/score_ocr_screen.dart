@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../config/app_theme.dart';
+import '../l10n/l10n.dart';
 import '../models/golf_score.dart';
 import '../services/score_ocr_parser.dart';
 import '../services/scorecard_service.dart';
@@ -127,22 +128,18 @@ class _ScoreOcrScreenState extends State<ScoreOcrScreen> {
       if (!mounted) return;
       if (source == ImageSource.camera) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              '카메라 접근에 실패했습니다. 아래 "앱 설정"을 눌러 Golf Windy의 카메라 권한을 확인해 주세요.',
-            ),
+          SnackBar(
+            content: Text(context.l10n.ocrCameraAccessFailed),
             action: SnackBarAction(
-              label: '앱 설정',
+              label: context.l10n.ocrOpenAppSettings,
               onPressed: openAppSettings,
             ),
           ),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              '사진 선택 화면을 열지 못했습니다. 앱을 완전히 종료한 뒤 다시 시도해 주세요.',
-            ),
+          SnackBar(
+            content: Text(context.l10n.ocrGalleryOpenFailed),
           ),
         );
       }
@@ -150,7 +147,7 @@ class _ScoreOcrScreenState extends State<ScoreOcrScreen> {
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('이미지를 불러오지 못했습니다: $error')),
+        SnackBar(content: Text(context.l10n.ocrImageLoadFailed('$error'))),
       );
       return;
     }
@@ -183,7 +180,7 @@ class _ScoreOcrScreenState extends State<ScoreOcrScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('OCR 인식에 실패했습니다: $e')),
+        SnackBar(content: Text(context.l10n.ocrRecognizeFailed('$e'))),
       );
     } finally {
       if (mounted) setState(() => _scanning = false);
@@ -215,12 +212,12 @@ class _ScoreOcrScreenState extends State<ScoreOcrScreen> {
       SnackBar(
         content: Text(
           shouldOpenSettings
-              ? '카메라 권한이 꺼져 있어 OCR 촬영을 시작할 수 없습니다. 아래 "앱 설정"을 눌러 Golf Windy의 카메라 권한을 허용해 주세요.'
-              : '카메라 권한이 필요합니다. 권한을 허용한 뒤 다시 시도해 주세요.',
+              ? context.l10n.ocrCameraPermissionOff
+              : context.l10n.ocrCameraPermissionNeeded,
         ),
         action: shouldOpenSettings
-            ? const SnackBarAction(
-                label: '앱 설정',
+            ? SnackBarAction(
+                label: context.l10n.ocrOpenAppSettings,
                 onPressed: openAppSettings,
               )
             : null,
@@ -326,7 +323,7 @@ class _ScoreOcrScreenState extends State<ScoreOcrScreen> {
     final initialIndexes = _companionReviewIndexes();
     if (initialIndexes.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('검토가 필요한 동반자 이름이 없습니다.')),
+        SnackBar(content: Text(context.l10n.ocrNoCompanionsToReview)),
       );
       return;
     }
@@ -351,8 +348,8 @@ class _ScoreOcrScreenState extends State<ScoreOcrScreen> {
       SnackBar(
         content: Text(
           remainingCount == 0
-              ? '좋아요, 검토가 필요한 동반자 이름을 모두 확인했어요.'
-              : '검토를 $reviewedCount명 진행했고, 아직 $remainingCount명 남아 있습니다.',
+              ? context.l10n.ocrReviewAllDone
+              : context.l10n.ocrReviewProgress(reviewedCount, remainingCount),
         ),
       ),
     );
@@ -381,7 +378,7 @@ class _ScoreOcrScreenState extends State<ScoreOcrScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         foregroundColor: t.fg,
-        title: const Text('스코어카드 OCR'),
+        title: Text(context.l10n.ocrTitle),
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(18, 8, 18, 120),
@@ -456,9 +453,9 @@ class _ScoreOcrScreenState extends State<ScoreOcrScreen> {
                 ),
               ),
               icon: const Icon(Icons.check),
-              label: const Text(
-                '현재 스코어카드에 적용',
-                style: TextStyle(fontWeight: FontWeight.w900),
+              label: Text(
+                context.l10n.ocrApplyToScorecard,
+                style: const TextStyle(fontWeight: FontWeight.w900),
               ),
             ),
           ),
@@ -501,7 +498,7 @@ class _PickCard extends StatelessWidget {
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  '스코어카드 이미지 스캔',
+                  context.l10n.ocrScanCardTitle,
                   style: TextStyle(
                     color: t.fg,
                     fontSize: 17,
@@ -519,7 +516,7 @@ class _PickCard extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            '사진 속 숫자를 읽어 홀별 타수 후보를 만듭니다. 인식 결과는 반드시 확인 후 적용하세요.',
+            context.l10n.ocrScanCardDesc,
             style: TextStyle(
               color: t.fg3,
               fontSize: 13,
@@ -533,7 +530,7 @@ class _PickCard extends StatelessWidget {
                 child: OutlinedButton.icon(
                   onPressed: scanning ? null : onGallery,
                   icon: const Icon(Icons.photo_library_outlined),
-                  label: const Text('사진 선택'),
+                  label: Text(context.l10n.ocrPickPhoto),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: t.fg,
                     side: BorderSide(color: t.line),
@@ -548,7 +545,7 @@ class _PickCard extends StatelessWidget {
                 child: FilledButton.icon(
                   onPressed: scanning ? null : onCamera,
                   icon: const Icon(Icons.camera_alt_outlined),
-                  label: const Text('촬영'),
+                  label: Text(context.l10n.ocrTakePhoto),
                   style: FilledButton.styleFrom(
                     backgroundColor: t.accent,
                     foregroundColor: t.accentInk,
@@ -592,6 +589,7 @@ class _OcrSummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = GwTheme.of(context);
+    final l10n = context.l10n;
     final frontTotal = _sumHoleStrokes(holes, start: 0, end: 9);
     final backTotal = _sumHoleStrokes(holes, start: 9, end: 18);
     final total = _sumHoleStrokes(holes);
@@ -607,7 +605,7 @@ class _OcrSummaryCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'OCR 요약',
+            l10n.ocrSummaryTitle,
             style: TextStyle(
               color: t.fg,
               fontSize: 15,
@@ -619,17 +617,26 @@ class _OcrSummaryCard extends StatelessWidget {
             spacing: 8,
             runSpacing: 8,
             children: [
-              _SummaryChip(label: '총합', value: '$total타'),
-              _SummaryChip(label: '전반', value: '$frontTotal타'),
-              _SummaryChip(label: '후반', value: '$backTotal타'),
-              _SummaryChip(label: '점수 동반자', value: '$scoredCompanionCount명'),
+              _SummaryChip(
+                  label: l10n.ocrChipTotal,
+                  value: l10n.ocrStrokesValue(total)),
+              _SummaryChip(
+                  label: l10n.ocrFrontNine,
+                  value: l10n.ocrStrokesValue(frontTotal)),
+              _SummaryChip(
+                  label: l10n.ocrBackNine,
+                  value: l10n.ocrStrokesValue(backTotal)),
+              _SummaryChip(
+                  label: l10n.ocrChipScoredCompanions,
+                  value: l10n.ocrPeopleValue(scoredCompanionCount)),
               if (nameOnlyCompanionCount > 0)
                 _SummaryChip(
-                    label: '이름만 감지', value: '$nameOnlyCompanionCount명'),
+                    label: l10n.ocrChipNameOnly,
+                    value: l10n.ocrPeopleValue(nameOnlyCompanionCount)),
               if (reviewNeededCompanionCount > 0)
-                const _SummaryChip(
-                  label: '이름 검토',
-                  value: '필요',
+                _SummaryChip(
+                  label: l10n.ocrChipNameReview,
+                  value: l10n.ocrChipNeeded,
                   highlight: true,
                 ),
             ],
@@ -642,21 +649,25 @@ class _OcrSummaryCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 if (courseName?.trim().isNotEmpty ?? false)
-                  _SummaryLine(label: '골프장', value: courseName!.trim()),
+                  _SummaryLine(
+                      label: l10n.ocrLabelCourse, value: courseName!.trim()),
                 if (playedAt != null)
-                  _SummaryLine(label: '라운드', value: _formatOcrDateTime(playedAt!)),
+                  _SummaryLine(
+                      label: l10n.ocrLabelRound,
+                      value: _formatOcrDateTime(playedAt!)),
                 if (playerName?.trim().isNotEmpty ?? false)
-                  _SummaryLine(label: '본인', value: playerName!.trim()),
+                  _SummaryLine(
+                      label: l10n.ocrLabelPlayer, value: playerName!.trim()),
               ],
             ),
           ],
           const SizedBox(height: 10),
           Text(
             !hasScanResult
-                ? '사진을 선택하거나 촬영하면 OCR 결과가 여기에 정리됩니다. 읽은 뒤에만 현재 스코어카드에 적용할 수 있어요.'
+                ? l10n.ocrSummaryEmptyHint
                 : changedHoleCount > 0
-                ? '기본 스코어카드와 다른 홀 $changedHoleCount개가 반영됐어요. 전반/후반 점수 흐름과 동반자 이름을 한 번만 더 확인하면 좋습니다.'
-                : '기본 코스 정보와 큰 차이는 없어요. 그래도 손글씨 카드라면 합계와 동반자 이름은 한 번 확인해 주세요.',
+                ? l10n.ocrSummaryChangedHint(changedHoleCount)
+                : l10n.ocrSummaryNoChangeHint,
             style: TextStyle(
               color: t.fg3,
               fontSize: 12,
@@ -800,7 +811,7 @@ class _HolePreviewTable extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '내 스코어 미리보기',
+            context.l10n.ocrMyScorePreview,
             style: TextStyle(
               color: t.fg,
               fontSize: 16,
@@ -809,7 +820,7 @@ class _HolePreviewTable extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            '전반/후반 흐름과 파 대비 결과를 보면서 이상한 홀을 바로 수정하세요.',
+            context.l10n.ocrMyScorePreviewDesc,
             style: TextStyle(
               color: t.fg3,
               fontSize: 12,
@@ -818,7 +829,7 @@ class _HolePreviewTable extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           _HolePreviewSection(
-            title: '전반',
+            title: context.l10n.ocrFrontNine,
             total: _sumHoleStrokes(frontNine),
             holes: frontNine,
             onTapHole: onTapHole,
@@ -826,7 +837,7 @@ class _HolePreviewTable extends StatelessWidget {
           if (backNine.isNotEmpty) ...[
             const SizedBox(height: 12),
             _HolePreviewSection(
-              title: '후반',
+              title: context.l10n.ocrBackNine,
               total: _sumHoleStrokes(backNine),
               holes: backNine,
               onTapHole: onTapHole,
@@ -869,7 +880,7 @@ class _HolePreviewSection extends StatelessWidget {
             ),
             const SizedBox(width: 8),
             Text(
-              '$total타',
+              context.l10n.ocrStrokesValue(total),
               style: TextStyle(
                 color: t.accent,
                 fontSize: 12,
@@ -944,7 +955,7 @@ class _HolePreviewSection extends StatelessWidget {
                     ),
                     const Spacer(),
                     Text(
-                      '${hole.strokes}타',
+                      context.l10n.ocrStrokesValue(hole.strokes),
                       style: TextStyle(
                         color: t.fg,
                         fontSize: 18,
@@ -955,7 +966,9 @@ class _HolePreviewSection extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      hole.puttsTracked ? '퍼트 ${hole.putts}' : '퍼트 미입력',
+                      hole.puttsTracked
+                          ? context.l10n.ocrPuttsValue(hole.putts)
+                          : context.l10n.ocrPuttsNotTracked,
                       style: TextStyle(
                         color: t.fg3,
                         fontSize: 10,
@@ -995,7 +1008,7 @@ class _RawTextBox extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  '원문 OCR',
+                  context.l10n.ocrRawTextTitle,
                   style: TextStyle(
                     color: t.fg,
                     fontSize: 14,
@@ -1008,14 +1021,14 @@ class _RawTextBox extends StatelessWidget {
                   await Clipboard.setData(ClipboardData(text: text));
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('원문 OCR을 복사했어요.'),
+                      SnackBar(
+                        content: Text(context.l10n.ocrRawTextCopied),
                       ),
                     );
                   }
                 },
                 visualDensity: VisualDensity.compact,
-                tooltip: '원문 복사',
+                tooltip: context.l10n.ocrCopyRawText,
                 icon: Icon(
                   Icons.copy_rounded,
                   size: 18,
@@ -1077,7 +1090,7 @@ class _CompanionPreviewCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '감지된 동반자 후보',
+            context.l10n.ocrCompanionCandidatesTitle,
             style: TextStyle(
               color: t.fg,
               fontSize: 14,
@@ -1086,7 +1099,7 @@ class _CompanionPreviewCard extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            '적용하면 아직 없는 이름만 동반자 목록에 자동 추가됩니다. 점수까지 읽힌 동반자는 이름과 홀별 타수를 바로 수정할 수 있습니다.',
+            context.l10n.ocrCompanionCandidatesDesc,
             style: TextStyle(
               color: t.fg3,
               fontSize: 12,
@@ -1096,7 +1109,7 @@ class _CompanionPreviewCard extends StatelessWidget {
           if (needsReviewCount > 0) ...[
             const SizedBox(height: 10),
             Text(
-              '$needsReviewCount명의 이름은 확인이 필요합니다.',
+              context.l10n.ocrCompanionNamesNeedReview(needsReviewCount),
               style: TextStyle(
                 color: t.warn,
                 fontSize: 12,
@@ -1109,7 +1122,7 @@ class _CompanionPreviewCard extends StatelessWidget {
               child: OutlinedButton.icon(
                 onPressed: onReviewNeeded,
                 icon: const Icon(Icons.playlist_play_rounded),
-                label: const Text('검토 필요한 동반자 순서대로 보기'),
+                label: Text(context.l10n.ocrReviewCompanionsInOrder),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: t.warn,
                   side: BorderSide(color: t.warn),
@@ -1123,7 +1136,7 @@ class _CompanionPreviewCard extends StatelessWidget {
           if (companions.isNotEmpty) ...[
             const SizedBox(height: 14),
             Text(
-              '점수까지 감지된 동반자',
+              context.l10n.ocrScoredCompanionsTitle,
               style: TextStyle(
                 color: t.fg,
                 fontSize: 13,
@@ -1180,10 +1193,10 @@ class _CompanionPreviewCard extends StatelessWidget {
                                       if (_needsCompanionNameReview(
                                         entry.value.name,
                                       ))
-                                        '이름 확인',
+                                        context.l10n.ocrFlagNameCheck,
                                       if (duplicateNames
                                           .contains(normalizedName))
-                                        '중복 후보',
+                                        context.l10n.ocrFlagDuplicate,
                                     ];
                                     if (flags.isEmpty) {
                                       return <Widget>[];
@@ -1191,7 +1204,10 @@ class _CompanionPreviewCard extends StatelessWidget {
                                     return <Widget>[
                                       const SizedBox(height: 4),
                                       Text(
-                                        '전반 $frontTotal · 후반 $backTotal',
+                                        context.l10n.ocrFrontBackTotals(
+                                          frontTotal,
+                                          backTotal,
+                                        ),
                                         style: TextStyle(
                                           color: t.fg3,
                                           fontSize: 11,
@@ -1217,7 +1233,12 @@ class _CompanionPreviewCard extends StatelessWidget {
                               ),
                             ),
                             Text(
-                              '${entry.value.holes.fold<int>(0, (sum, hole) => sum + hole.strokes)}타',
+                              context.l10n.ocrStrokesValue(
+                                entry.value.holes.fold<int>(
+                                  0,
+                                  (sum, hole) => sum + hole.strokes,
+                                ),
+                              ),
                               style: TextStyle(
                                 color: t.fg3,
                                 fontSize: 12,
@@ -1240,7 +1261,7 @@ class _CompanionPreviewCard extends StatelessWidget {
           if (namesOnlyCandidates.isNotEmpty) ...[
             const SizedBox(height: 12),
             Text(
-              '이름만 감지된 동반자 후보',
+              context.l10n.ocrNameOnlyCandidatesTitle,
               style: TextStyle(
                 color: t.fg,
                 fontSize: 13,
@@ -1252,7 +1273,7 @@ class _CompanionPreviewCard extends StatelessWidget {
               spacing: 8,
               runSpacing: 8,
               children: namesOnlyCandidates
-                  .map((name) => _buildNameChip(t, name))
+                  .map((name) => _buildNameChip(context, t, name))
                   .toList(),
             ),
           ],
@@ -1263,7 +1284,9 @@ class _CompanionPreviewCard extends StatelessWidget {
             Wrap(
               spacing: 8,
               runSpacing: 8,
-              children: names.map((name) => _buildNameChip(t, name)).toList(),
+              children: names
+                  .map((name) => _buildNameChip(context, t, name))
+                  .toList(),
             ),
           ],
         ],
@@ -1271,7 +1294,7 @@ class _CompanionPreviewCard extends StatelessWidget {
     );
   }
 
-  Widget _buildNameChip(GwTheme t, String name) {
+  Widget _buildNameChip(BuildContext context, GwTheme t, String name) {
     final needsReview = _needsCompanionNameReview(name);
     return Container(
       padding: const EdgeInsets.symmetric(
@@ -1284,7 +1307,7 @@ class _CompanionPreviewCard extends StatelessWidget {
         border: needsReview ? Border.all(color: t.warn) : null,
       ),
       child: Text(
-        needsReview ? '$name 확인' : name,
+        needsReview ? context.l10n.ocrNameCheckChip(name) : name,
         style: TextStyle(
           color: needsReview ? t.warn : t.fg,
           fontSize: 12,
@@ -1334,7 +1357,7 @@ class _HoleEditSheetState extends State<_HoleEditSheet> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              '${widget.hole.holeNumber}번 홀 보정',
+              context.l10n.ocrHoleEditTitle(widget.hole.holeNumber),
               style: TextStyle(
                 color: t.fg,
                 fontSize: 18,
@@ -1343,7 +1366,7 @@ class _HoleEditSheetState extends State<_HoleEditSheet> {
             ),
             const SizedBox(height: 8),
             Text(
-              '손글씨 카드나 흐릿한 숫자는 여기서 바로 수정하세요.',
+              context.l10n.ocrHoleEditDesc,
               style: TextStyle(
                 color: t.fg3,
                 fontSize: 12,
@@ -1364,7 +1387,7 @@ class _HoleEditSheetState extends State<_HoleEditSheet> {
             ),
             const SizedBox(height: 14),
             _ValuePickerRow(
-              label: '타수',
+              label: context.l10n.ocrLabelStrokes,
               value: _strokes,
               values: List<int>.generate(12, (index) => index + 1),
               onChanged: (value) {
@@ -1375,7 +1398,7 @@ class _HoleEditSheetState extends State<_HoleEditSheet> {
             ),
             const SizedBox(height: 14),
             _ValuePickerRow(
-              label: '퍼트',
+              label: context.l10n.ocrLabelPutts,
               value: _putts,
               values: List<int>.generate(6, (index) => index),
               onChanged: (value) {
@@ -1404,9 +1427,9 @@ class _HoleEditSheetState extends State<_HoleEditSheet> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                child: const Text(
-                  '보정 반영',
-                  style: TextStyle(fontWeight: FontWeight.w900),
+                child: Text(
+                  context.l10n.ocrApplyFix,
+                  style: const TextStyle(fontWeight: FontWeight.w900),
                 ),
               ),
             ),
@@ -1573,7 +1596,7 @@ class _CompanionOcrEditScreenState extends State<_CompanionOcrEditScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         foregroundColor: t.fg,
-        title: const Text('동반자 OCR 보정'),
+        title: Text(context.l10n.ocrCompanionEditTitle),
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(18, 8, 18, 120),
@@ -1589,7 +1612,7 @@ class _CompanionOcrEditScreenState extends State<_CompanionOcrEditScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '이름',
+                  context.l10n.ocrLabelName,
                   style: TextStyle(
                     color: t.fg,
                     fontSize: 13,
@@ -1602,7 +1625,7 @@ class _CompanionOcrEditScreenState extends State<_CompanionOcrEditScreen> {
                   onChanged: (_) => setState(() {}),
                   style: TextStyle(color: t.fg),
                   decoration: InputDecoration(
-                    hintText: '동반자 이름',
+                    hintText: context.l10n.ocrCompanionNameHint,
                     hintStyle: TextStyle(color: t.fg3),
                     filled: true,
                     fillColor: t.surface2,
@@ -1615,7 +1638,7 @@ class _CompanionOcrEditScreenState extends State<_CompanionOcrEditScreen> {
                 if (needsNameReview) ...[
                   const SizedBox(height: 8),
                   Text(
-                    '너무 짧거나 애매한 이름입니다. 추천 이름이나 원문 OCR을 함께 확인해 주세요.',
+                    context.l10n.ocrNameTooShortWarning,
                     style: TextStyle(
                       color: t.warn,
                       fontSize: 12,
@@ -1626,7 +1649,7 @@ class _CompanionOcrEditScreenState extends State<_CompanionOcrEditScreen> {
                 if (hasDuplicateName) ...[
                   const SizedBox(height: 8),
                   Text(
-                    '다른 동반자와 이름이 같습니다. 같은 분이 아니라면 이름을 구분해 주세요.',
+                    context.l10n.ocrDuplicateNameWarning,
                     style: TextStyle(
                       color: t.warn,
                       fontSize: 12,
@@ -1637,7 +1660,7 @@ class _CompanionOcrEditScreenState extends State<_CompanionOcrEditScreen> {
                 if (_recommendedNames.isNotEmpty) ...[
                   const SizedBox(height: 14),
                   Text(
-                    '자주 함께한 이름',
+                    context.l10n.ocrFrequentNames,
                     style: TextStyle(
                       color: t.fg3,
                       fontSize: 12,
@@ -1658,8 +1681,9 @@ class _CompanionOcrEditScreenState extends State<_CompanionOcrEditScreen> {
                                     suggestion.name,
                                   ) >=
                                   6)
-                                '유사도 높음',
-                              '${suggestion.roundCount}회',
+                                context.l10n.ocrHighSimilarity,
+                              context.l10n
+                                  .ocrRoundsValue(suggestion.roundCount),
                               _formatSuggestionDate(suggestion.lastPlayedAt),
                             ].join(' · '),
                             onTap: () {
@@ -1679,7 +1703,7 @@ class _CompanionOcrEditScreenState extends State<_CompanionOcrEditScreen> {
                 ],
                 const SizedBox(height: 12),
                 Text(
-                  '현재 합계 $total타',
+                  context.l10n.ocrCurrentTotal(total),
                   style: TextStyle(
                     color: t.fg3,
                     fontSize: 12,
@@ -1725,9 +1749,9 @@ class _CompanionOcrEditScreenState extends State<_CompanionOcrEditScreen> {
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              child: const Text(
-                '동반자 보정 반영',
-                style: TextStyle(fontWeight: FontWeight.w900),
+              child: Text(
+                context.l10n.ocrApplyCompanionFix,
+                style: const TextStyle(fontWeight: FontWeight.w900),
               ),
             ),
           ),
@@ -1818,7 +1842,7 @@ class _CompanionHolePreviewTable extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '홀별 타수',
+            context.l10n.ocrHoleStrokesTitle,
             style: TextStyle(
               color: t.fg,
               fontSize: 16,
@@ -1827,7 +1851,7 @@ class _CompanionHolePreviewTable extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            '동반자 홀을 눌러 타수를 수정하세요.',
+            context.l10n.ocrCompanionHoleEditDesc,
             style: TextStyle(
               color: t.fg3,
               fontSize: 12,
@@ -1873,7 +1897,7 @@ class _CompanionHolePreviewTable extends StatelessWidget {
                       ),
                       const SizedBox(height: 3),
                       Text(
-                        '${hole.strokes}타',
+                        context.l10n.ocrStrokesValue(hole.strokes),
                         style: TextStyle(
                           color: t.fg,
                           fontSize: 18,
@@ -1930,7 +1954,7 @@ class _CompanionHoleEditSheetState extends State<_CompanionHoleEditSheet> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              '${widget.hole.holeNumber}번 홀 동반자 타수',
+              context.l10n.ocrCompanionHoleTitle(widget.hole.holeNumber),
               style: TextStyle(
                 color: t.fg,
                 fontSize: 18,
@@ -1939,7 +1963,7 @@ class _CompanionHoleEditSheetState extends State<_CompanionHoleEditSheet> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Par ${widget.hole.par} 기준으로 타수를 보정합니다.',
+              context.l10n.ocrCompanionHoleDesc(widget.hole.par),
               style: TextStyle(
                 color: t.fg3,
                 fontSize: 12,
@@ -1948,7 +1972,7 @@ class _CompanionHoleEditSheetState extends State<_CompanionHoleEditSheet> {
             ),
             const SizedBox(height: 18),
             _ValuePickerRow(
-              label: '타수',
+              label: context.l10n.ocrLabelStrokes,
               value: _strokes,
               values: List<int>.generate(12, (index) => index + 1),
               onChanged: (value) {
@@ -1978,9 +2002,9 @@ class _CompanionHoleEditSheetState extends State<_CompanionHoleEditSheet> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                child: const Text(
-                  '타수 반영',
-                  style: TextStyle(fontWeight: FontWeight.w900),
+                child: Text(
+                  context.l10n.ocrApplyStrokes,
+                  style: const TextStyle(fontWeight: FontWeight.w900),
                 ),
               ),
             ),

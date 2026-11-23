@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
 import '../config/app_theme.dart';
+import '../l10n/l10n.dart';
 import 'home_screen.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -106,7 +107,7 @@ class _SplashScreenState extends State<SplashScreen>
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    '스마트한 라운드 관리',
+                    context.l10n.splashTagline,
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w400,

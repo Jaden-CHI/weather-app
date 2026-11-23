@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
+import '../l10n/l10n.dart';
 import 'weather_api_service.dart';
 
 class CalendarGolfImportCandidate {
@@ -12,6 +13,7 @@ class CalendarGolfImportCandidate {
     this.description,
     this.courseKeyword,
     this.matchedCourse,
+    this.portalPlace,
   });
 
   final String title;
@@ -22,14 +24,23 @@ class CalendarGolfImportCandidate {
   final String? courseKeyword;
   final CourseSearchResult? matchedCourse;
 
+  /// 코스 DB에 없을 때 포털(카카오 장소 검색)에서 찾은 골프장
+  final PortalGolfPlace? portalPlace;
+
   String get displayCourseName =>
-      matchedCourse?.name ?? courseKeyword ?? location ?? title;
+      matchedCourse?.name ??
+      portalPlace?.name ??
+      courseKeyword ??
+      location ??
+      title;
 
   String? get displayAddress {
     final trimmed = location?.trim();
-    if (trimmed == null || trimmed.isEmpty) return null;
-    if (matchedCourse != null && trimmed == matchedCourse!.name) return null;
-    return trimmed;
+    if (trimmed != null && trimmed.isNotEmpty) {
+      if (matchedCourse != null && trimmed == matchedCourse!.name) return null;
+      return trimmed;
+    }
+    return portalPlace?.address;
   }
 }
 
@@ -49,14 +60,15 @@ class CalendarImportService {
 
   static const MethodChannel _channel = MethodChannel('golf_windy/calendar');
 
+  // CC/GC는 대문자 + 단어 경계 한정: soccer, account, "cc: 참조" 오탐 방지
   static final RegExp _golfKeywordPattern = RegExp(
-    r'(골프|라운드|라운딩|컨트리\s*클럽|골프\s*클럽|골프장|CC|C\.C|GC|G\.C)',
-    caseSensitive: false,
+    r'골프|라운드|라운딩|컨트리\s*클럽|골프\s*클럽|골프장|'
+    r'(?<![A-Za-z])(?:CC|C\.C|GC|G\.C)(?![A-Za-z])',
   );
 
   static final RegExp _coursePattern = RegExp(
-    r'([가-힣A-Za-z0-9\s·\.\-&]+?(?:CC|C\.C|GC|G\.C|골프장|골프클럽|컨트리클럽|컨트리\s*클럽))',
-    caseSensitive: false,
+    r'([가-힣A-Za-z0-9\s·\.\-&]+?'
+    r'(?:(?<![A-Za-z])CC(?![A-Za-z])|C\.C|(?<![A-Za-z])GC(?![A-Za-z])|G\.C|골프장|골프클럽|컨트리클럽|컨트리\s*클럽))',
   );
 
   Future<CalendarGolfImportResult> findGolfEvents({
@@ -105,14 +117,14 @@ class CalendarImportService {
             .where((value) => value.trim().isNotEmpty)
             .join('\n');
 
-        if (!_looksLikeGolfEvent(sourceText)) continue;
+        if (!looksLikeGolfEvent(sourceText)) continue;
 
         final uniqueKey = '${id ?? title}|${startAt.millisecondsSinceEpoch}';
         if (!seen.add(uniqueKey)) continue;
 
         rawCandidates.add(
           CalendarGolfImportCandidate(
-            title: title.isEmpty ? '골프 일정' : title,
+            title: title.isEmpty ? L10n.current.calDefaultGolfTitle : title,
             startAt: startAt,
             location: location.isEmpty ? null : location,
             description: description.isEmpty ? null : description,
@@ -130,6 +142,9 @@ class CalendarImportService {
 
     for (final candidate in rawCandidates.take(20)) {
       final matchedCourse = await _matchCourse(candidate);
+      // 코스 DB에 없으면 포털 장소 검색으로 이름·주소·좌표 보강
+      final portalPlace =
+          matchedCourse == null ? await _searchPortalPlace(candidate) : null;
       enriched.add(
         CalendarGolfImportCandidate(
           title: candidate.title,
@@ -139,6 +154,7 @@ class CalendarImportService {
           description: candidate.description,
           courseKeyword: candidate.courseKeyword,
           matchedCourse: matchedCourse,
+          portalPlace: portalPlace,
         ),
       );
     }
@@ -149,11 +165,15 @@ class CalendarImportService {
     );
   }
 
-  bool _looksLikeGolfEvent(String sourceText) {
+  /// 골프 키워드 또는 골프장 접미 패턴이 실제로 있을 때만 골프 일정으로 분류.
+  /// (_extractCourseKeyword의 임의 텍스트 폴백은 분류 기준으로 쓰지 않는다 —
+  /// 쓰면 2~24자 제목의 모든 일정이 골프로 분류되는 오탐이 발생)
+  @visibleForTesting
+  bool looksLikeGolfEvent(String sourceText) {
     final normalized = sourceText.trim();
     if (normalized.isEmpty) return false;
     return _golfKeywordPattern.hasMatch(normalized) ||
-        _extractCourseKeyword(normalized) != null;
+        _coursePattern.hasMatch(normalized);
   }
 
   String? _extractCourseKeyword(String sourceText) {
@@ -208,6 +228,28 @@ class CalendarImportService {
       if (!seen.add(query)) continue;
       final course = await WeatherApiService.instance.searchCourse(query);
       if (course != null) return course;
+    }
+
+    return null;
+  }
+
+  Future<PortalGolfPlace?> _searchPortalPlace(
+    CalendarGolfImportCandidate candidate,
+  ) async {
+    final queries = <String>[
+      if (candidate.courseKeyword?.trim().isNotEmpty ?? false)
+        candidate.courseKeyword!.trim(),
+      if (candidate.location?.trim().isNotEmpty ?? false)
+        candidate.location!.trim(),
+    ];
+
+    final seen = <String>{};
+    for (final query in queries) {
+      if (!seen.add(query)) continue;
+      final place = await WeatherApiService.instance.searchPortalGolfPlace(
+        query,
+      );
+      if (place != null) return place;
     }
 
     return null;

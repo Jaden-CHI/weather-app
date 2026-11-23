@@ -21,6 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from models.database import AsyncSessionLocal
 from services.ai_advisor import _rule_based_golf, _rule_based_marine
 from services.push_notifier import NotificationPayload, send_push
+from services.forecast_safety import is_sample_source, target_date
 
 
 # ── 날씨 상태 판단 (캐시 데이터 기반) ─────────────────────────────
@@ -28,9 +29,11 @@ def _assess_golf_status(cache_data: dict, event_date: date) -> tuple[str, str, s
     """(status, title, body) 반환"""
     forecasts = cache_data.get("kma_forecast", [])
     target = event_date.strftime("%Y%m%d")
-    day_fc = [f for f in forecasts if f.get("date") == target] or forecasts[:8]
+    day_fc = [f for f in forecasts if f.get("date") == target]
+    if is_sample_source(cache_data.get("source")) or not day_fc:
+        return "UNKNOWN", "예보 확인 필요", "해당 날짜의 실제 예보가 없습니다"
 
-    rec = _rule_based_golf(day_fc, (event_date - date.today()).days)
+    rec = _rule_based_golf(day_fc, (event_date - target_date(0)).days)
     return rec["status"], rec["message"], rec["detail"]
 
 
@@ -49,6 +52,8 @@ def _should_notify(old_status: str | None, new_status: str) -> bool:
     GREEN→YELLOW, YELLOW→RED, GREEN→RED: 발송
     RED→GREEN: 호전 알림도 발송 (취소 철회 가능성)
     """
+    if new_status == "UNKNOWN":
+        return False
     if old_status == new_status and new_status == "GREEN":
         return False
     return old_status != new_status
@@ -90,7 +95,7 @@ async def process_subscription(
         return
 
     cache_data = json.loads(cached)
-    dday = (event_date - date.today()).days
+    dday = (event_date - target_date(0)).days
 
     # 상태 판단
     if activity == "GOLF":

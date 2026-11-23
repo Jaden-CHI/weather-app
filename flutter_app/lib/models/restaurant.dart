@@ -1,5 +1,7 @@
 import 'dart:math';
 
+import '../l10n/l10n.dart';
+
 class Restaurant {
   final String id;
   final String name;
@@ -123,7 +125,7 @@ class RestaurantDetail extends Restaurant {
   factory RestaurantDetail.fromRestaurant(
     Restaurant restaurant, {
     String phone = '',
-    String hours = '미지정',
+    String? hours,
     List<String> reviews = const [],
   }) {
     return RestaurantDetail(
@@ -138,7 +140,7 @@ class RestaurantDetail extends Restaurant {
       lat: restaurant.lat,
       lng: restaurant.lng,
       phone: phone.isNotEmpty ? phone : restaurant.phone,
-      hours: hours,
+      hours: hours ?? L10n.current.restHoursUnspecified,
       reviews: reviews,
       placeUrl: restaurant.placeUrl,
     );

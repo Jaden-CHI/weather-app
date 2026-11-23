@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../config/app_theme.dart';
+import '../l10n/l10n.dart';
 import '../models/restaurant.dart';
 
 class RestaurantNavigationService {
@@ -58,8 +59,8 @@ class RestaurantNavigationService {
                 const SizedBox(height: 16),
                 _DirectionTile(
                   icon: Icons.navigation_outlined,
-                  title: '카카오맵으로 길찾기',
-                  subtitle: '설치되어 있으면 앱으로 열고, 없으면 웹으로 연결',
+                  title: sheetContext.l10n.restNavKakaoTitle,
+                  subtitle: sheetContext.l10n.restNavKakaoSubtitle,
                   onTap: () async {
                     Navigator.pop(sheetContext);
                     await _openKakaoDirections(context, restaurant);
@@ -68,8 +69,8 @@ class RestaurantNavigationService {
                 const SizedBox(height: 10),
                 _DirectionTile(
                   icon: Icons.map_outlined,
-                  title: '네이버 지도로 길찾기',
-                  subtitle: '네이버 지도 앱이 있으면 바로 연결',
+                  title: sheetContext.l10n.restNavNaverTitle,
+                  subtitle: sheetContext.l10n.restNavNaverSubtitle,
                   onTap: () async {
                     Navigator.pop(sheetContext);
                     await _openNaverDirections(context, restaurant);
@@ -78,8 +79,8 @@ class RestaurantNavigationService {
                 const SizedBox(height: 10),
                 _DirectionTile(
                   icon: Icons.public,
-                  title: '웹 지도로 열기',
-                  subtitle: '지도 앱이 없어도 브라우저에서 확인',
+                  title: sheetContext.l10n.restNavWebTitle,
+                  subtitle: sheetContext.l10n.restNavWebSubtitle,
                   onTap: () async {
                     Navigator.pop(sheetContext);
                     await _openWebDirections(context, restaurant);
@@ -125,7 +126,7 @@ class RestaurantNavigationService {
     await _launchWithFallback(
       context,
       appUri: appUri,
-      fallbackUri: _kakaoWebUri(restaurant),
+      fallbackUri: _naverWebUri(restaurant),
     );
   }
 
@@ -141,6 +142,13 @@ class RestaurantNavigationService {
 
   static Uri _kakaoWebUri(Restaurant restaurant) => Uri.parse(
         'https://map.kakao.com/link/to/${Uri.encodeComponent(restaurant.name)},${restaurant.lat},${restaurant.lng}',
+      );
+
+  static Uri _naverWebUri(Restaurant restaurant) => Uri.parse(
+        'https://m.map.naver.com/route.nhn?menu=route'
+        '&ename=${Uri.encodeComponent(restaurant.name)}'
+        '&ex=${restaurant.lng}&ey=${restaurant.lat}'
+        '&pathType=0&showMap=true',
       );
 
   static Future<void> _launchWithFallback(
@@ -169,7 +177,7 @@ class RestaurantNavigationService {
     );
     if (!launched && messenger != null) {
       messenger.showSnackBar(
-        const SnackBar(content: Text('길찾기를 열 수 없습니다. 잠시 후 다시 시도해 주세요.')),
+        SnackBar(content: Text(L10n.current.restNavOpenFailed)),
       );
     }
   }
