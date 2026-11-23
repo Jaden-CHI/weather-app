@@ -165,7 +165,10 @@ async def _fetch_custom_open_meteo(
         "longitude": lon,
         "hourly": "temperature_2m,precipitation_probability,windspeed_10m,weathercode",
         "timezone": "Asia/Seoul",
-        "forecast_days": 7,
+        # Open-Meteo 기본 풍속 단위는 km/h — 판정 임계값(m/s)과 맞춘다
+        "wind_speed_unit": "ms",
+        # 앱이 D-7까지 요청하므로 오늘 포함 8일치
+        "forecast_days": 8,
     }
     async with httpx.AsyncClient() as client:
         resp = await client.get(url, params=params, timeout=10.0)
