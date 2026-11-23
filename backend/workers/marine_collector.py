@@ -10,11 +10,19 @@ import asyncio
 import json
 import os
 import random
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import httpx
 import redis.asyncio as aioredis
+
+
+KST = timezone(timedelta(hours=9))
+
+
+def _now_kst() -> datetime:
+    """서버 시간대(UTC)와 무관한 한국 현재 시각 (기존 포맷 유지를 위해 naive)."""
+    return datetime.now(KST).replace(tzinfo=None)
 
 
 # ── Mock: 해양 기상 ───────────────────────────────────────────────
@@ -24,7 +32,7 @@ def _mock_marine_weather(spot_id: str) -> dict:
     has_warning = wind_spd >= 14.0 or wave_h >= 3.0
 
     hourly = []
-    now = datetime.now().replace(minute=0, second=0, microsecond=0)
+    now = _now_kst().replace(minute=0, second=0, microsecond=0)
     for h in range(48):
         dt = now + timedelta(hours=h)
         w = round(random.uniform(0.3, 4.5), 1)
@@ -56,7 +64,7 @@ def _mock_marine_weather(spot_id: str) -> dict:
 
 # ── Mock: 조석 예보 ───────────────────────────────────────────────
 def _mock_tide_forecast() -> list[dict]:
-    now = datetime.now()
+    now = _now_kst()
     base_hour = 4
     tides = []
     for i in range(4):
@@ -119,7 +127,7 @@ async def _fetch_tide_forecast(
     params = {
         "ServiceKey": api_key,
         "ObsCode": obs_code,
-        "Date": datetime.now().strftime("%Y%m%d"),
+        "Date": _now_kst().strftime("%Y%m%d"),
         "ResultType": "json",
     }
     resp = await client.get(url, params=params, timeout=10.0)
@@ -143,7 +151,7 @@ def _calc_golden_time(tides: list[dict]) -> str:
         if tide["type"] == "만조":
             try:
                 h, m = map(int, tide["time"].split(":"))
-                dt = datetime.now().replace(hour=h, minute=m)
+                dt = _now_kst().replace(hour=h, minute=m)
                 start = (dt - timedelta(hours=1)).strftime("%H:%M")
                 end = (dt + timedelta(hours=1)).strftime("%H:%M")
                 return f"{start}~{end}"
@@ -182,7 +190,7 @@ async def collect_spot_marine(
 
         golden_time = _calc_golden_time(tides)
         payload = {
-            "updated_at": datetime.now().isoformat(),
+            "updated_at": datetime.now(KST).isoformat(),
             "source": source,
             "marine": marine,
             "tides": tides,

@@ -12,7 +12,7 @@
 import asyncio
 import json
 import os
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 import redis.asyncio as aioredis
 from sqlalchemy import text
@@ -167,7 +167,8 @@ async def process_subscription(
 # ── 전체 구독 처리 실행 ─────────────────────────────────────────
 async def run_notification_check() -> dict[str, int]:
     redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
-    today = date.today()
+    # 서버 시간대(UTC)가 아닌 한국 날짜 기준
+    today = datetime.now(timezone(timedelta(hours=9))).date()
     until = today + timedelta(days=7)
 
     r = aioredis.from_url(redis_url, decode_responses=True)
