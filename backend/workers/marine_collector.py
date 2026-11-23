@@ -12,11 +12,13 @@ import os
 import random
 from datetime import datetime, timedelta, timezone
 from typing import Any
+from urllib.parse import quote, unquote
 
 import httpx
 import redis.asyncio as aioredis
 
-from services.kma_api import fetch_items
+from services.kma_api import KmaApiError, fetch_items
+from services.khoa_api import KhoaApiError, fetch_tides
 
 
 KST = timezone(timedelta(hours=9))
@@ -117,25 +119,7 @@ async def _fetch_weather_warning(
 async def _fetch_tide_forecast(
     obs_code: str, api_key: str, client: httpx.AsyncClient
 ) -> list[dict]:
-    url = "http://www.khoa.go.kr/api/oceangrid/tideObsPreTab/search.do"
-    params = {
-        "ServiceKey": api_key,
-        "ObsCode": obs_code,
-        "Date": _now_kst().strftime("%Y%m%d"),
-        "ResultType": "json",
-    }
-    resp = await client.get(url, params=params, timeout=10.0)
-    resp.raise_for_status()
-    data = resp.json()["result"]["data"]
-
-    tides = []
-    for item in data:
-        tides.append({
-            "time": item["tph_time"][:5],
-            "height": float(item["tph_level"]),
-            "type": "만조" if item["hl_code"] == "H" else "간조",
-        })
-    return tides
+    return await fetch_tides(client, obs_code, api_key, _now_kst().strftime("%Y%m%d"))
 
 
 # ── 입질 골든타임 계산 ────────────────────────────────────────────
@@ -198,7 +182,13 @@ async def collect_spot_marine(
         existing = await r.get(cache_key)
         if existing:
             await r.expire(cache_key, 3600)
-        print(f"[WARN] {spot['spot_id']} 해양 수집 실패: {e}")
+        # Raw HTTP exception strings contain query credentials; only log safe types.
+        detail = str(e) if isinstance(e, (KmaApiError, KhoaApiError)) else type(e).__name__
+        for key in (kma_key, khoa_key):
+            if key.strip():
+                for value in (key.strip(), quote(key.strip(), safe=""), unquote(key.strip())):
+                    detail = detail.replace(value, "[REDACTED]")
+        print(f"[WARN] {spot['spot_id']} 해양 수집 실패: {detail}")
         return False
 
 
