@@ -16,6 +16,8 @@ from typing import Any
 import httpx
 import redis.asyncio as aioredis
 
+from services.kma_api import fetch_items
+
 
 KST = timezone(timedelta(hours=9))
 
@@ -81,25 +83,17 @@ def _mock_tide_forecast() -> list[dict]:
 async def _fetch_weather_warning(
     region_code: str, api_key: str, client: httpx.AsyncClient
 ) -> dict:
-    url = "http://apis.data.go.kr/1360000/WthrWrnInfoService/getWthrWrnMsg"
-    params = {
-        "serviceKey": api_key,
-        "pageNo": 1, "numOfRows": 20,
-        "dataType": "JSON",
-        "stnId": region_code,
-    }
-    resp = await client.get(url, params=params, timeout=10.0)
-    resp.raise_for_status()
-
-    items = (
-        resp.json()
-        .get("response", {})
-        .get("body", {})
-        .get("items", {})
-        .get("item", [])
+    items = await fetch_items(
+        client,
+        "WthrWrnInfoService/getWthrWrnMsg",
+        api_key,
+        {
+            "pageNo": 1, "numOfRows": 20,
+            "dataType": "JSON",
+            "stnId": region_code,
+        },
+        allow_empty=True,  # 발효 중인 특보가 없으면 NO_DATA
     )
-    if isinstance(items, dict):
-        items = [items]
 
     active = [
         i for i in items
