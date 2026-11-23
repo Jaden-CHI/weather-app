@@ -114,7 +114,7 @@ def test_worker_requests_korean_calendar_date(monkeypatch):
     monkeypatch.setattr(mc, "fetch_tides", mocked)
     client = object()
     asyncio.run(mc._fetch_tide_forecast("DT_0018", KEY, client))
-    mocked.assert_awaited_once_with(client, "DT_0018", KEY, DATE)
+    mocked.assert_awaited_once_with(client, "DT_0018", KEY, DATE, None)
 
 
 def test_collection_failure_preserves_cache_and_hides_raw_exception(monkeypatch, capsys):
@@ -124,7 +124,7 @@ def test_collection_failure_preserves_cache_and_hides_raw_exception(monkeypatch,
     cache = AsyncMock()
     cache.get.return_value = "existing-cache"
     ok = asyncio.run(mc.collect_spot_marine(
-        {"spot_id": "FS_001", "khoa_obs_code": "DT_0018"},
+        {"spot_id": "FS_001", "khoa_obs_code": "DT_0018", "khoa_obs_name": "군산"},
         cache, object(), "kma-test-key", KEY, False, 10800,
     ))
     assert ok is False

@@ -171,10 +171,10 @@ async def seed_data(session: AsyncSession) -> None:
     print(f"[DB] 골프장 {len(courses)}개 동기화 완료")
 
     # 낚시 출항지
+    with open(f"{base}/fishing_spots.json", encoding="utf-8") as f:
+        spots = json.load(f)
     count = (await session.execute(text("SELECT COUNT(*) FROM fishing_spots"))).scalar()
     if count == 0:
-        with open(f"{base}/fishing_spots.json", encoding="utf-8") as f:
-            spots = json.load(f)
         for s in spots:
             s["grid_x"], s["grid_y"] = _wgs84_to_grid(s["lat"], s["lon"])
             await session.execute(
@@ -189,3 +189,14 @@ async def seed_data(session: AsyncSession) -> None:
             )
         await session.commit()
         print(f"[DB] 낚시 출항지 {len(spots)}개 시드 완료")
+
+    # Synchronize only the audited tide codes, preserving all other stored fields.
+    for spot in spots:
+        await session.execute(
+            text("""
+                UPDATE fishing_spots SET khoa_obs_code = :code
+                WHERE spot_id = :id AND khoa_obs_code IS DISTINCT FROM :code
+            """),
+            {"id": spot["spot_id"], "code": spot.get("khoa_obs_code")},
+        )
+    await session.commit()

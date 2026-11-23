@@ -18,7 +18,7 @@ import httpx
 import redis.asyncio as aioredis
 
 from services.kma_api import KmaApiError, fetch_items
-from services.khoa_api import KhoaApiError, fetch_tides
+from services.khoa_api import KhoaApiError, TIDE_MAPPING_VERSION, fetch_tides
 
 
 KST = timezone(timedelta(hours=9))
@@ -117,9 +117,12 @@ async def _fetch_weather_warning(
 
 # ── KHOA 조석 예보 실제 호출 ─────────────────────────────────────
 async def _fetch_tide_forecast(
-    obs_code: str, api_key: str, client: httpx.AsyncClient
+    obs_code: str, api_key: str, client: httpx.AsyncClient,
+    expected_station: str | None = None,
 ) -> list[dict]:
-    return await fetch_tides(client, obs_code, api_key, _now_kst().strftime("%Y%m%d"))
+    return await fetch_tides(
+        client, obs_code, api_key, _now_kst().strftime("%Y%m%d"), expected_station
+    )
 
 
 # ── 입질 골든타임 계산 ────────────────────────────────────────────
@@ -163,8 +166,12 @@ async def collect_spot_marine(
             # KHOA 조석
             tides = []
             if spot.get("khoa_obs_code"):
-                tides = await _fetch_tide_forecast(spot["khoa_obs_code"], khoa_key, client)
-            source = "KMA+KHOA"
+                if not spot.get("khoa_obs_name"):
+                    raise KhoaApiError("KHOA station mapping is unverified")
+                tides = await _fetch_tide_forecast(
+                    spot["khoa_obs_code"], khoa_key, client, spot["khoa_obs_name"]
+                )
+            source = "KMA+KHOA" if tides else "KMA"
 
         golden_time = _calc_golden_time(tides)
         payload = {
@@ -172,6 +179,12 @@ async def collect_spot_marine(
             "source": source,
             "marine": marine,
             "tides": tides,
+            "tide_mapping_version": TIDE_MAPPING_VERSION,
+            "tide_status": "mock" if use_mock else ("available" if tides else "mapping_unverified"),
+            "tide_station": {
+                "code": spot["khoa_obs_code"], "name": spot["khoa_obs_name"],
+                "relation": "regional_reference",
+            } if not use_mock and tides else None,
             "golden_time": golden_time,
             "main_fish": spot.get("main_fish", []),
         }

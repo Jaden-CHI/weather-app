@@ -7,6 +7,7 @@ import httpx
 
 
 TIDE_URL = "https://apis.data.go.kr/1192136/tideFcstHghLw/GetTideFcstHghLwApiService"
+TIDE_MAPPING_VERSION = "2026-11-23"
 
 
 class KhoaApiError(RuntimeError):
@@ -14,7 +15,8 @@ class KhoaApiError(RuntimeError):
 
 
 async def fetch_tides(
-    client: httpx.AsyncClient, obs_code: str, api_key: str, date: str
+    client: httpx.AsyncClient, obs_code: str, api_key: str, date: str,
+    expected_station: str | None = None,
 ) -> list[dict]:
     if not api_key.strip():
         raise KhoaApiError("KHOA_API_KEY is missing")
@@ -40,10 +42,10 @@ async def fetch_tides(
         payload = response.json()
     except ValueError:
         raise KhoaApiError("KHOA returned non-JSON data") from None
-    return parse_tides(payload, date)
+    return parse_tides(payload, date, expected_station)
 
 
-def parse_tides(payload: object, date: str) -> list[dict]:
+def parse_tides(payload: object, date: str, expected_station: str | None = None) -> list[dict]:
     # The portal schema describes header/body; some serializers wrap in response.
     if not isinstance(payload, dict):
         raise KhoaApiError("KHOA invalid response schema")
@@ -66,6 +68,8 @@ def parse_tides(payload: object, date: str) -> list[dict]:
     tides = []
     for row in rows:
         try:
+            if expected_station and row.get("obsvtrNm", "").strip() != expected_station:
+                raise ValueError
             predicted = datetime.fromisoformat(row["predcDt"])
             kind = str(row["extrSe"])
             height_cm = float(row["predcTdlvVl"])
@@ -73,7 +77,7 @@ def parse_tides(payload: object, date: str) -> list[dict]:
                     or kind not in ("1", "2", "3", "4")
                     or not math.isfinite(height_cm)):
                 raise ValueError
-        except (KeyError, TypeError, ValueError, OverflowError):
+        except (AttributeError, KeyError, TypeError, ValueError, OverflowError):
             raise KhoaApiError("KHOA invalid tide record") from None
         tides.append({
             "time": predicted.strftime("%H:%M"),
@@ -82,3 +86,14 @@ def parse_tides(payload: object, date: str) -> list[dict]:
             "type": "만조" if kind in ("1", "3") else "간조",
         })
     return sorted(tides, key=lambda tide: tide["time"])
+
+
+def cached_tide_view(data: dict) -> dict:
+    """Do not serve tides cached using the old, geographically incorrect mappings."""
+    if data.get("tide_mapping_version") != TIDE_MAPPING_VERSION:
+        return {"tides": [], "golden_time": "정보 없음",
+                "tide_status": "unverified", "tide_station": None}
+    return {"tides": data.get("tides", []),
+            "golden_time": data.get("golden_time", "정보 없음"),
+            "tide_status": data.get("tide_status", "unavailable"),
+            "tide_station": data.get("tide_station")}
