@@ -19,6 +19,7 @@ import redis.asyncio as aioredis
 
 from services.kma_api import KmaApiError, fetch_items
 from services.khoa_api import KhoaApiError, TIDE_MAPPING_VERSION, fetch_tides
+from services.marine_forecast import fetch_port_forecast
 
 
 KST = timezone(timedelta(hours=9))
@@ -97,21 +98,12 @@ async def _fetch_weather_warning(
         allow_empty=True,  # 발효 중인 특보가 없으면 NO_DATA
     )
 
-    active = [
-        i for i in items
-        if i.get("warnVar") in ["풍랑", "태풍", "안개"]
-        and i.get("warnStress") in ["경보", "주의보"]
-    ]
-    departure_blocked = any(
-        i["warnVar"] == "풍랑" and i["warnStress"] in ["경보", "주의보"]
-        for i in active
-    )
+    # Message bulletins (t1...t6) are not an active-warning list for this port.
+    # Empty bulletins also cannot establish that the local sea area is safe.
     return {
-        "has_warning": bool(active),
-        "departure_blocked": departure_blocked,
-        "warnings": active,
-        "level": active[0]["warnStress"] if active else "없음",
-        "message": f"{active[0]['warnVar']}{active[0]['warnStress']} 발효" if active else "출항 가능",
+        "status": "unverified", "has_warning": None, "departure_blocked": None,
+        "warnings": [], "bulletin_count": len(items), "level": "확인 필요",
+        "message": "해당 해역의 기상특보와 출항 통제를 공식 안내에서 확인하세요.",
     }
 
 
@@ -153,25 +145,48 @@ async def collect_spot_marine(
 ) -> bool:
     cache_key = f"marine:{spot['spot_id']}"
     try:
+        failures = []
+        tide_status = "mock" if use_mock else "mapping_unverified"
         if use_mock:
             marine = _mock_marine_weather(spot["spot_id"])
             tides = _mock_tide_forecast()
             source = "MOCK"
         else:
-            # 기상특보 (지역 코드는 spot 데이터에 추가 예정)
             region_code = spot.get("kma_region_code", "108")
-            marine_warning = await _fetch_weather_warning(region_code, kma_key, client)
-            marine = {"spot_id": spot["spot_id"], "warning": marine_warning}
-
-            # KHOA 조석
+            marine = {"spot_id": spot["spot_id"], "current": {}, "hourly_forecast": [],
+                      "forecast_status": "unavailable", "warning": {
+                          "status": "unavailable", "has_warning": None,
+                          "departure_blocked": None, "level": "확인 필요",
+                          "message": "기상특보를 수신하지 못했습니다. 공식 안내를 확인하세요.",
+                      }}
+            providers = []
+            try:
+                marine.update(await fetch_port_forecast(spot, kma_key, client, cache=r))
+                providers.append("KMA")
+            except Exception as exc:
+                failures.append(("forecast", exc))
+            try:
+                marine["warning"] = await _fetch_weather_warning(region_code, kma_key, client)
+            except Exception as exc:
+                failures.append(("warning", exc))
             tides = []
             if spot.get("khoa_obs_code"):
-                if not spot.get("khoa_obs_name"):
-                    raise KhoaApiError("KHOA station mapping is unverified")
-                tides = await _fetch_tide_forecast(
-                    spot["khoa_obs_code"], khoa_key, client, spot["khoa_obs_name"]
-                )
-            source = "KMA+KHOA" if tides else "KMA"
+                tide_status = "unavailable"
+                try:
+                    if not spot.get("khoa_obs_name"):
+                        raise KhoaApiError("KHOA station mapping is unverified")
+                    tides = await _fetch_tide_forecast(
+                        spot["khoa_obs_code"], khoa_key, client, spot["khoa_obs_name"]
+                    )
+                    if tides:
+                        providers.append("KHOA")
+                        tide_status = "available"
+                except Exception as exc:
+                    failures.append(("tides", exc))
+            source = "+".join(providers) or "NONE"
+            for component, exc in failures:
+                # Only type names: upstream exceptions may contain credentials.
+                print(f"[WARN] {spot['spot_id']} {component} 수집 실패: {type(exc).__name__}")
 
         golden_time = _calc_golden_time(tides)
         payload = {
@@ -180,7 +195,7 @@ async def collect_spot_marine(
             "marine": marine,
             "tides": tides,
             "tide_mapping_version": TIDE_MAPPING_VERSION,
-            "tide_status": "mock" if use_mock else ("available" if tides else "mapping_unverified"),
+            "tide_status": tide_status,
             "tide_station": {
                 "code": spot["khoa_obs_code"], "name": spot["khoa_obs_name"],
                 "relation": "regional_reference",
@@ -189,7 +204,7 @@ async def collect_spot_marine(
             "main_fish": spot.get("main_fish", []),
         }
         await r.setex(cache_key, ttl, json.dumps(payload, ensure_ascii=False))
-        return True
+        return use_mock or source != "NONE"
 
     except Exception as e:
         existing = await r.get(cache_key)

@@ -1,4 +1,5 @@
 import asyncio
+import json
 from datetime import datetime
 from unittest.mock import AsyncMock
 
@@ -117,7 +118,7 @@ def test_worker_requests_korean_calendar_date(monkeypatch):
     mocked.assert_awaited_once_with(client, "DT_0018", KEY, DATE, None)
 
 
-def test_collection_failure_preserves_cache_and_hides_raw_exception(monkeypatch, capsys):
+def test_collection_failure_marks_unavailable_and_hides_raw_exception(monkeypatch, capsys):
     monkeypatch.setattr(mc, "_fetch_weather_warning", AsyncMock(return_value={}))
     monkeypatch.setattr(mc, "_fetch_tide_forecast", AsyncMock(
         side_effect=httpx.ReadTimeout(f"url?serviceKey={KEY}")))
@@ -128,8 +129,10 @@ def test_collection_failure_preserves_cache_and_hides_raw_exception(monkeypatch,
         cache, object(), "kma-test-key", KEY, False, 10800,
     ))
     assert ok is False
-    cache.setex.assert_not_awaited()
-    cache.expire.assert_awaited_once_with("marine:FS_001", 3600)
+    payload = json.loads(cache.setex.await_args.args[2])
+    assert payload["source"] == "NONE"
+    assert payload["tides"] == []
+    cache.expire.assert_not_awaited()
     log = capsys.readouterr().out
     assert "ReadTimeout" in log
     assert KEY not in log

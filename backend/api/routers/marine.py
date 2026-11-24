@@ -79,6 +79,8 @@ async def get_spot_weather(spot_id: str, db: AsyncSession = Depends(get_db)):
         # 해양 기상
         "current_weather": marine.get("current", {}),
         "hourly_forecast": marine.get("hourly_forecast", [])[:24],
+        "forecast_status": marine.get("forecast_status", "unavailable"),
+        "forecast_reference": marine.get("forecast_reference"),
         "warning": marine.get("warning", {}),
         # 조석
         "tides": tides,
@@ -99,6 +101,6 @@ async def get_spot_weather(spot_id: str, db: AsyncSession = Depends(get_db)):
                 ],
                 "warning": "미신고 시 사고 발생 때 보험처리 불이익 발생",
             },
-            "departure_blocked_message": "풍랑주의보 발효 시 해양경찰 출항통제가 자동 적용됩니다",
+            "departure_blocked_message": "해당 해역의 기상특보와 해양경찰·선사의 출항 통제 안내를 확인하세요.",
         },
     }
