@@ -1,7 +1,9 @@
 """Claude API 기반 취소/진행 권고 생성 서비스"""
 
 import json
+import math
 import os
+from datetime import datetime, timedelta, timezone
 
 import anthropic
 
@@ -79,38 +81,9 @@ async def get_marine_recommendation(
     use_mock: bool = False,
 ) -> dict:
     """배낚시 출항 권고 생성"""
-    api_key = os.getenv("ANTHROPIC_API_KEY", "")
     warning = marine_data.get("warning", {})
-
-    if use_mock or not api_key:
-        return _rule_based_marine(marine_data, warning)
-
-    current = marine_data.get("current", {})
-    prompt = f"""낚시 출항지: {spot_name}
-현재 해양 상태:
-- 파고: {current.get('wave_height','?')}m
-- 풍속: {current.get('wind_speed','?')}m/s
-- 수온: {current.get('sea_temp','?')}°C
-- 기상특보: {warning.get('level','없음')}
-- 입질 골든타임: {golden_time}
-
-아래 JSON만 출력:
-{{"status":"GREEN|YELLOW|RED","message":"잠금화면 한 줄 (30자 이내)","detail":"출항 권고 상세 (80자 이내)","departure_ok":true|false}}
-
-기준:
-- RED: 풍랑특보 발효 OR 파고 3m↑ OR 풍속 14m/s↑
-- YELLOW: 파고 2~3m OR 풍속 10~14m/s
-- GREEN: 그 외"""
-
-    try:
-        resp = await _get_client().messages.create(
-            model="claude-sonnet-4-6",
-            max_tokens=200,
-            messages=[{"role": "user", "content": prompt}],
-        )
-        return json.loads(resp.content[0].text.strip())
-    except Exception:
-        return _rule_based_marine(marine_data, warning)
+    # A language model must not turn unavailable safety inputs into permission.
+    return _rule_based_marine(marine_data, warning)
 
 
 # ── 규칙 기반 폴백 (API 키 없을 때) ──────────────────────────────
@@ -159,27 +132,46 @@ def _rule_based_golf(forecasts: list[dict], dday: int) -> dict:
 
 def _rule_based_marine(marine_data: dict, warning: dict) -> dict:
     current = marine_data.get("current", {})
-    wave = float(current.get("wave_height", 0))
-    wind = float(current.get("wind_speed", 0))
-    blocked = warning.get("departure_blocked", False)
+    def measurement(key):
+        value = current.get(key)
+        return value if isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value) and value >= 0 else None
 
-    if blocked or wave >= 3.0 or wind >= 14.0:
+    wave = measurement("wave_height")
+    wind = measurement("wind_speed")
+    blocked = warning.get("status") == "available" and warning.get("departure_blocked") is True
+    try:
+        at = datetime.fromisoformat(current["datetime"])
+        age = datetime.now(timezone.utc) - at
+        fresh = timedelta(0) <= age < timedelta(hours=1)
+    except (KeyError, ValueError, TypeError):
+        fresh = False
+
+    if not fresh:
+        wave = wind = None
+
+    if blocked or (wave is not None and wave >= 3.0) or (wind is not None and wind >= 14.0):
         return {
             "status": "RED",
-            "message": "출항 불가 — 풍랑특보 또는 고파도",
-            "detail": f"파고 {wave}m / 풍속 {wind}m/s — 출항 자제",
+            "message": "출조 자제 — 위험 기상 신호",
+            "detail": "높은 파도·강풍 또는 특보 정보가 있습니다. 공식 통제 안내를 확인하세요.",
+            "departure_ok": False,
+        }
+    if wave is None or wind is None or warning.get("status") != "available":
+        return {
+            "status": "UNKNOWN", "message": "출조 판단 보류 — 정보 확인 필요",
+            "detail": "바람·파고·해역별 특보 중 확인되지 않은 항목이 있습니다. 공식 안내를 확인하세요.",
             "departure_ok": False,
         }
     elif wave >= 2.0 or wind >= 10.0:
         return {
             "status": "YELLOW",
             "message": "출항 주의 — 파도 높음",
-            "detail": f"파고 {wave}m / 풍속 {wind}m/s — 숙련자만 출항 권고",
-            "departure_ok": True,
+            "detail": f"파고 {wave}m / 풍속 {wind}m/s — 현장 기상과 통제 안내 확인 필요",
+            "departure_ok": False,
         }
     return {
         "status": "GREEN",
-        "message": "출항 가능 — 조황 양호",
-        "detail": f"파고 {wave}m / 풍속 {wind}m/s — 출조 최적 조건",
-        "departure_ok": True,
+        "message": "수치상 양호 — 현장 확인 필요",
+        "detail": f"파고 {wave}m / 풍속 {wind}m/s — 안전이나 출항 허가를 보장하지 않습니다",
+        "departure_ok": False,
     }

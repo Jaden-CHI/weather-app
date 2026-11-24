@@ -20,6 +20,14 @@ EXPECTED = {
 }
 
 
+@pytest.fixture(autouse=True)
+def stub_port_forecast(monkeypatch):
+    monkeypatch.setattr(mc, "fetch_port_forecast", AsyncMock(return_value={
+        "current": {"wind_speed": 2.1}, "hourly_forecast": [],
+        "forecast_status": "available",
+    }))
+
+
 def test_seed_uses_audited_station_names_and_codes():
     assert len(SPOTS) == 15
     for spot in SPOTS:
