@@ -9,7 +9,7 @@ from fastapi import FastAPI, Query
 from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 
-from api.routers import golf, marine, devices, admin, port_forecasts
+from api.routers import golf, marine, devices, admin, port_forecasts, trip_plans
 from models.database import AsyncSessionLocal, init_schema, seed_data
 
 # CORS_ORIGINS 가 설정되면 그 목록만 허용, 없으면 개발용 와일드카드
@@ -35,8 +35,8 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_cors_origins,
-    allow_methods=["GET", "POST", "DELETE"],
-    allow_headers=["Content-Type", "X-Admin-Token"],
+    allow_methods=["GET", "POST", "PUT", "DELETE"],
+    allow_headers=["Content-Type", "X-Admin-Token", "Authorization"],
 )
 
 app.include_router(golf.router)
@@ -44,6 +44,7 @@ app.include_router(marine.router)
 app.include_router(port_forecasts.router)
 app.include_router(devices.router)
 app.include_router(admin.router)
+app.include_router(trip_plans.router)
 
 
 @app.get("/health")

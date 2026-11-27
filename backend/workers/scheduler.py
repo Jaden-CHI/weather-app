@@ -6,6 +6,7 @@ import os
 from .weather_collector import run_golf_collection
 from .marine_collector import run_marine_collection
 from .notification_worker import run_notification_check
+from .trip_alert_worker import trip_alert_loop
 from models.database import AsyncSessionLocal, init_schema, seed_data
 
 
@@ -27,6 +28,15 @@ async def run_once() -> None:
 async def main() -> None:
     interval = int(os.getenv("WORKER_INTERVAL_MINUTES", "60")) * 60
     await ensure_database_ready()
+    trip_task = asyncio.create_task(trip_alert_loop())
+    try:
+        await collection_loop(interval)
+    finally:
+        trip_task.cancel()
+        await asyncio.gather(trip_task, return_exceptions=True)
+
+
+async def collection_loop(interval):
     while True:
         await run_once()
         print(f"[스케줄러] {interval // 60}분 후 재실행 대기")

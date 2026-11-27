@@ -119,3 +119,44 @@ CREATE INDEX IF NOT EXISTS idx_golf_golfzon ON golf_courses(golfzon_id) WHERE go
 CREATE INDEX IF NOT EXISTS idx_golf_linked ON golf_courses(golfzon_linked) WHERE golfzon_linked = TRUE;
 CREATE INDEX IF NOT EXISTS idx_fishing_sea ON fishing_spots(sea_type);
 CREATE INDEX IF NOT EXISTS idx_fishing_grid ON fishing_spots(grid_x, grid_y);
+CREATE TABLE IF NOT EXISTS fishing_push_devices (
+    uid VARCHAR(128) NOT NULL,
+    installation_id UUID NOT NULL,
+    fcm_token TEXT NOT NULL UNIQUE,
+    platform VARCHAR(10) NOT NULL,
+    revision BIGINT NOT NULL,
+    payload_hash TEXT NOT NULL,
+    active BOOLEAN NOT NULL DEFAULT TRUE,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    expires_at TIMESTAMPTZ NOT NULL,
+    PRIMARY KEY (uid, installation_id)
+);
+
+CREATE TABLE IF NOT EXISTS fishing_trip_plans (
+    uid VARCHAR(128) NOT NULL,
+    installation_id UUID NOT NULL,
+    plan_id VARCHAR(80) NOT NULL,
+    payload JSONB NOT NULL,
+    revision BIGINT NOT NULL,
+    last_state VARCHAR(20),
+    checked_at TIMESTAMPTZ,
+    PRIMARY KEY (uid, installation_id, plan_id),
+    FOREIGN KEY (uid, installation_id) REFERENCES fishing_push_devices ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS fishing_trip_events (
+    event_id UUID PRIMARY KEY,
+    uid VARCHAR(128) NOT NULL,
+    installation_id UUID NOT NULL,
+    plan_id VARCHAR(80) NOT NULL,
+    revision BIGINT NOT NULL,
+    state VARCHAR(20) NOT NULL,
+    title TEXT NOT NULL,
+    body TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    delivery VARCHAR(20) NOT NULL DEFAULT 'pending',
+    attempts INTEGER NOT NULL DEFAULT 0,
+    next_attempt TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    FOREIGN KEY (uid, installation_id, plan_id) REFERENCES fishing_trip_plans ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS fishing_trip_pending ON fishing_trip_events (next_attempt) WHERE delivery='pending';
